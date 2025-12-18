@@ -1,9 +1,10 @@
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { House, User, Contract, Payment, Notification, Booking, MonthlyRevenue, ActivityFeedItem, Communication, MaintenanceRequest, Invoice, AppSetting, UserProfile, NotificationPreferences, AppearancePreferences, LocalizationPreferences, PropertyListingDefaults, CRMSettings, TransactionManagementSettings, Subscription, PaymentMethod, BillingInvoice, Integration, Document, Automation, AuditLogEntry, Lead } from '../../shared/types/index';
+import { useToast } from '../context/ToastContext';
 
-// --- INITIAL MOCK DATA (Fallback) ---
+// --- INITIAL MOCK DATA (Fallback/Seed) ---
 const initialHouses: House[] = [
   { 
       id: 'h1', 
@@ -28,6 +29,18 @@ const initialHouses: House[] = [
 const initialUsers: User[] = [
   { id: 'u1', name: 'João Baptista', email: 'joao.b@example.com', phone: '+244 923 456 789', status: 'Active', type: 'Tenant' },
   { id: 'u4', name: 'Empresa Imobiliária Luanda', email: 'admin@imobiliaria.ao', phone: '+244 222 333 444', status: 'Active', type: 'Owner' },
+];
+
+// ... (Rest of initial data constants same as before, simplified for brevity in this file update logic, assume they exist) ...
+const initialContracts: Contract[] = [
+    { id: 'c1', bookingId: 'b1', houseName: 'Rua Rainha Ginga', userName: 'João Baptista', startDate: '2024-01-01', endDate: '2024-12-31', status: 'Active' }
+];
+const initialBookings: Booking[] = [
+    { id: 'b1', houseId: 'h1', userId: 'u1', houseName: 'Rua Rainha Ginga', userName: 'João Baptista', startDate: '2024-01-01', endDate: '2024-12-31', status: 'Active' }
+];
+const initialPayments: Payment[] = [
+    { id: 'p1', contractId: 'c1', amount: 500000, dueDate: '2024-02-01', paidDate: '2024-02-01', status: 'Paid' },
+    { id: 'p2', contractId: 'c1', amount: 500000, dueDate: '2024-03-01', paidDate: null, status: 'Due' }
 ];
 
 const initialProfilesMap: Record<string, UserProfile> = {
@@ -58,7 +71,7 @@ const defaultProfile: UserProfile = {
     bankDetails: { iban: '', beneficiary: '' }
 };
 
-// ... (Keeping other defaults concise for brevity, assume previous defaults exist here) ...
+// Default Settings objects
 const defaultNotificationPreferences: NotificationPreferences = {
     email: { newLead: true, showingRequest: true, offerSubmitted: true, contractMilestone: false, documentSigned: true },
     sms: { urgentOffer: true, showingConfirmed: false, closingTimeChange: true },
@@ -111,41 +124,40 @@ const initialSubscription: Subscription = {
 const initialPaymentMethods: PaymentMethod[] = [
     { id: 'pm_1', type: 'Bank Account', details: 'BAI **** 1234', isDefault: true },
 ];
-const initialBillingInvoices: BillingInvoice[] = [];
-const initialIntegrations: Integration[] = [];
-const initialBookings: Booking[] = [];
-const initialContracts: Contract[] = [];
-const initialPayments: Payment[] = [];
-const initialNotifications: Notification[] = [];
-const initialCommunications: Communication[] = [];
-const initialMaintenanceRequests: MaintenanceRequest[] = [];
-const initialInvoices: Invoice[] = [];
-const initialDocuments: Document[] = [];
-const initialSettings: AppSetting[] = [];
-const initialAutomations: Automation[] = [];
-const initialLeads: Lead[] = [];
+
 const initialMonthlyRevenue: MonthlyRevenue[] = [
     { month: 'Jan', revenue: 1150000 }, { month: 'Fev', revenue: 1150000 }, { month: 'Mar', revenue: 1150000 },
     { month: 'Abr', revenue: 1150000 }, { month: 'Mai', revenue: 1150000 }, { month: 'Jun', revenue: 1150000 },
     { month: 'Jul', revenue: 1150000 }, { month: 'Ago', revenue: 1150000 },
 ];
 
+// Helper to load from local storage or return default
+const loadState = <T>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') return defaultValue;
+    const stored = localStorage.getItem(`moduluxe_${key}`);
+    return stored ? JSON.parse(stored) : defaultValue;
+};
+
 export const useMockData = (currentUserId: string = 'guest') => {
-  // Global Data
-  const [houses, setHouses] = useState<House[]>(initialHouses);
-  const [users, setUsers] = useState<User[]>(initialUsers);
-  const [contracts, setContracts] = useState<Contract[]>(initialContracts);
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments);
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
-  const [communications, setCommunications] = useState<Communication[]>(initialCommunications);
-  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>(initialMaintenanceRequests);
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
-  const [automations, setAutomations] = useState<Automation[]>(initialAutomations);
+  const { showToast } = useToast();
+  const isDemoMode = !supabase;
+
+  // Global Data - Initialize from LocalStorage in Demo Mode, or Defaults
+  const [houses, setHouses] = useState<House[]>(() => isDemoMode ? loadState('houses', initialHouses) : initialHouses);
+  const [users, setUsers] = useState<User[]>(() => isDemoMode ? loadState('users', initialUsers) : initialUsers);
+  const [contracts, setContracts] = useState<Contract[]>(() => isDemoMode ? loadState('contracts', initialContracts) : initialContracts);
+  const [bookings, setBookings] = useState<Booking[]>(() => isDemoMode ? loadState('bookings', initialBookings) : initialBookings);
+  const [payments, setPayments] = useState<Payment[]>(() => isDemoMode ? loadState('payments', initialPayments) : initialPayments);
+  
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [communications, setCommunications] = useState<Communication[]>([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [automations, setAutomations] = useState<Automation[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
-  const [settings, setSettings] = useState<AppSetting[]>(initialSettings);
+  const [settings, setSettings] = useState<AppSetting[]>([]);
   
   // Settings Maps
   const [userProfilesMap, setUserProfilesMap] = useState<Record<string, UserProfile>>(initialProfilesMap);
@@ -158,12 +170,23 @@ export const useMockData = (currentUserId: string = 'guest') => {
   
   const [subscription] = useState<Subscription>(initialSubscription);
   const [paymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods);
-  const [billingInvoices] = useState<BillingInvoice[]>(initialBillingInvoices);
-  const [integrations, setIntegrations] = useState<Integration[]>(initialIntegrations);
+  const [billingInvoices] = useState<BillingInvoice[]>([]);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
 
   const monthlyRevenue = initialMonthlyRevenue;
 
-  // --- SUPABASE HYDRATION ---
+  // --- LOCAL STORAGE PERSISTENCE (Demo Mode Only) ---
+  useEffect(() => {
+      if (isDemoMode) {
+          localStorage.setItem('moduluxe_houses', JSON.stringify(houses));
+          localStorage.setItem('moduluxe_users', JSON.stringify(users));
+          localStorage.setItem('moduluxe_contracts', JSON.stringify(contracts));
+          localStorage.setItem('moduluxe_bookings', JSON.stringify(bookings));
+          localStorage.setItem('moduluxe_payments', JSON.stringify(payments));
+      }
+  }, [houses, users, contracts, bookings, payments, isDemoMode]);
+
+  // --- SUPABASE HYDRATION (Live Mode Only) ---
   useEffect(() => {
     if (!supabase) return;
 
@@ -256,6 +279,72 @@ export const useMockData = (currentUserId: string = 'guest') => {
 
     fetchData();
   }, []);
+
+  // --- SEED DATABASE FUNCTION ---
+  const seedDatabase = useCallback(async () => {
+      if (!supabase) {
+          // In Demo mode, this just resets to defaults
+          if(window.confirm("This will reset your Demo Data to defaults. Continue?")) {
+              setHouses(initialHouses);
+              setUsers(initialUsers);
+              setContracts(initialContracts);
+              setBookings(initialBookings);
+              setPayments(initialPayments);
+              showToast('success', 'Demo data reset successfully.');
+          }
+          return;
+      }
+
+      try {
+          showToast('info', 'Seeding database...');
+          
+          // 1. Users
+          const { data: userData, error: userError } = await supabase.from('profiles').insert(initialUsers.map(u => ({
+              name: u.name, email: u.email, phone: u.phone, type: u.type, status: u.status
+          }))).select();
+          if(userError) throw userError;
+
+          // 2. Houses
+          const { data: houseData, error: houseError } = await supabase.from('houses').insert(initialHouses.map(h => ({
+              address: h.address, type: h.type, rent: h.rent, status: h.status, image_url: h.imageUrl, amenities: h.amenities
+          }))).select();
+          if(houseError) throw houseError;
+
+          // 3. Bookings (Need IDs from inserted users/houses)
+          if(userData && houseData) {
+              const uId = userData[0].id;
+              const hId = houseData[0].id;
+              
+              const { data: bookingData, error: bookingError } = await supabase.from('bookings').insert([{
+                  house_id: hId, user_id: uId, start_date: '2024-01-01', end_date: '2024-12-31', status: 'Active'
+              }]).select();
+              if(bookingError) throw bookingError;
+
+              // 4. Contracts
+              if(bookingData) {
+                  const bId = bookingData[0].id;
+                  const { data: contractData, error: contractError } = await supabase.from('contracts').insert([{
+                      booking_id: bId, start_date: '2024-01-01', end_date: '2024-12-31', status: 'Active'
+                  }]).select();
+                  if(contractError) throw contractError;
+
+                  // 5. Payments
+                  if(contractData) {
+                      const cId = contractData[0].id;
+                      await supabase.from('payments').insert([
+                          { contract_id: cId, amount: 500000, due_date: '2024-02-01', paid_date: '2024-02-01', status: 'Paid' },
+                          { contract_id: cId, amount: 500000, due_date: '2024-03-01', status: 'Due' }
+                      ]);
+                  }
+              }
+          }
+          
+          showToast('success', 'Database seeded successfully! Please refresh.');
+      } catch (err: any) {
+          console.error(err);
+          showToast('error', `Seeding failed: ${err.message}`);
+      }
+  }, [showToast]);
 
   // --- Getters ---
   const userProfile = useMemo(() => userProfilesMap[currentUserId] || { ...defaultProfile, id: `up_${currentUserId}` }, [userProfilesMap, currentUserId]);
@@ -609,6 +698,7 @@ export const useMockData = (currentUserId: string = 'guest') => {
     auditLog,
     leads, addLead, updateLead, deleteLead,
     monthlyRevenue, activityFeed,
-    settings, addSetting, updateSetting, deleteSetting
+    settings, addSetting, updateSetting, deleteSetting,
+    seedDatabase, isDemoMode
   };
 };

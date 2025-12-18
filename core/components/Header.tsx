@@ -1,9 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { AppView, Notification, House, User, Contract } from '../../shared/types/index';
-import { BellIcon, Bars3Icon, BellAlertIcon } from '../../components/ui/icons/Icons';
+import { BellIcon, Bars3Icon, BellAlertIcon, BoltIcon } from '../../components/ui/icons/Icons';
 import { useTranslation } from '../i18n/LanguageContext';
 import GlobalSearch from './GlobalSearch';
+import { supabase } from '../lib/supabaseClient';
 
 interface HeaderProps {
   currentView: AppView;
@@ -21,6 +22,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, notifications, onMenuClick
   const unreadCount = notifications.filter(n => !n.read).length;
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const isDemo = !supabase;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,7 +71,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, notifications, onMenuClick
         >
           <Bars3Icon className="h-6 w-6" />
         </button>
-        <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-100 truncate">{t(getViewTranslationKey(currentView))}</h2>
+        <div className="flex flex-col">
+            <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-100 truncate">{t(getViewTranslationKey(currentView))}</h2>
+            {isDemo && (
+                <span className="text-[10px] uppercase font-bold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-1.5 rounded w-fit">
+                    Demo Mode (Local)
+                </span>
+            )}
+        </div>
       </div>
 
       <div className="flex-1 flex justify-center px-4">
@@ -81,7 +90,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, notifications, onMenuClick
         />
       </div>
 
-      <div className="flex items-center" ref={dropdownRef}>
+      <div className="flex items-center space-x-2" ref={dropdownRef}>
+        {!isDemo && (
+             <div className="hidden md:flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                <BoltIcon className="h-3 w-3 mr-1" />
+                Live
+             </div>
+        )}
+
         <button 
             onClick={handleNotificationClick}
             className="relative p-2 text-gray-500 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-white focus:outline-none focus:ring"

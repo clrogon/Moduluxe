@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CogIcon } from '../../components/ui/icons/Icons';
 import { AppSetting, SettingCategory, UserProfile, NotificationPreferences, AppearancePreferences, LocalizationPreferences, PropertyListingDefaults, CRMSettings, TransactionManagementSettings, Subscription, PaymentMethod, BillingInvoice, Integration } from '../../shared/types/index';
@@ -11,6 +12,7 @@ import CRMSettingsComponent from './CRMSettings';
 import TransactionManagementSettingsComponent from './TransactionManagementSettings';
 import BillingPaymentsSettings from './BillingPaymentsSettings';
 import IntegrationsSettings from './IntegrationsSettings';
+import AdvancedSettings from './AdvancedSettings';
 import WIPBanner from '../../components/ui/WIPBanner';
 import { useTranslation } from '../../core/i18n/LanguageContext';
 
@@ -58,6 +60,7 @@ const SettingsView: React.FC<SettingsViewProps> = (props) => {
     'Transaction Management',
     'Billing & Payments',
     'Integrations',
+    'Advanced Settings'
   ];
 
   const renderContent = () => {
@@ -82,6 +85,8 @@ const SettingsView: React.FC<SettingsViewProps> = (props) => {
         return <BillingPaymentsSettings subscription={props.subscription} paymentMethods={props.paymentMethods} invoices={props.billingInvoices} />;
       case 'Integrations':
         return <IntegrationsSettings integrations={props.integrations} onConnect={props.onConnectIntegration} onDisconnect={props.onDisconnectIntegration} />;
+      case 'Advanced Settings':
+        return <AdvancedSettings />;
       default:
         return (
             <div className="p-8 text-center">
