@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import DataTable from '../../components/ui/DataTable';
 import StatusPill from '../../components/ui/StatusPill';
@@ -136,6 +137,7 @@ const BookingsView: React.FC<BookingsViewProps> = ({ bookings, houses, users, on
                 initialData={selectedBooking}
                 houses={houses}
                 users={users}
+                bookings={bookings}
                 onSubmit={handleSubmit}
                 onCancel={() => setIsModalOpen(false)}
                 onCancelBooking={selectedBooking ? handleCancelBooking : undefined}

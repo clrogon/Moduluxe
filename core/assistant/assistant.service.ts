@@ -50,33 +50,45 @@ const summarizeContext = (data: AppData) => {
     };
 };
 
-export const createChatSession = (context: AppData): Chat => {
+export const createChatSession = (context: AppData): Chat | null => {
   // SECURITY WARNING: In a production environment, never expose API keys in client-side code.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const model = 'gemini-2.5-flash';
+  const apiKey = process.env.API_KEY;
   
-  // Performance Optimization: Send minified context
-  const minifiedContext = summarizeContext(context);
+  if (!apiKey) {
+      console.warn("Moduluxe AI: API_KEY is missing in environment variables. AI features will be disabled.");
+      return null;
+  }
 
-  const systemInstruction = `
-    You are an expert real estate management assistant for a platform called Moduluxe.
-    Your task is to answer questions based ONLY on the JSON data provided below.
-    
-    Guidelines:
-    1. Do not make up information. If the answer cannot be found in the data, say so.
-    2. Be concise and clear.
-    3. Current Date: ${new Date().toLocaleDateString()}
-    
-    DATA:
-    ${JSON.stringify(minifiedContext)}
-  `;
+  try {
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+      const model = 'gemini-2.5-flash';
+      
+      // Performance Optimization: Send minified context
+      const minifiedContext = summarizeContext(context);
 
-  return ai.chats.create({
-    model: model,
-    config: {
-      systemInstruction: systemInstruction,
-    },
-  });
+      const systemInstruction = `
+        You are an expert real estate management assistant for a platform called Moduluxe.
+        Your task is to answer questions based ONLY on the JSON data provided below.
+        
+        Guidelines:
+        1. Do not make up information. If the answer cannot be found in the data, say so.
+        2. Be concise and clear.
+        3. Current Date: ${new Date().toLocaleDateString()}
+        
+        DATA:
+        ${JSON.stringify(minifiedContext)}
+      `;
+
+      return ai.chats.create({
+        model: model,
+        config: {
+          systemInstruction: systemInstruction,
+        },
+      });
+  } catch (error) {
+      console.error("Moduluxe AI: Failed to initialize GoogleGenAI client.", error);
+      return null;
+  }
 };
 
 export const sendMessageToChat = async (chat: Chat, message: string): Promise<string> => {

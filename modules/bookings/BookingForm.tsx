@@ -1,23 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
 import { Booking, House, User, BookingStatus } from '../../shared/types/index';
 import { useTranslation } from '../../core/i18n/LanguageContext';
+import { useToast } from '../../core/context/ToastContext';
 
 interface BookingFormProps {
   initialData?: Booking | null;
   houses: House[];
   users: User[];
+  bookings?: Booking[]; // Added to check for overlaps
   onSubmit: (booking: Booking) => void;
   onCancel: () => void;
   onCancelBooking?: (id: string) => void;
 }
 
-const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, onSubmit, onCancel, onCancelBooking }) => {
+const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, bookings = [], onSubmit, onCancel, onCancelBooking }) => {
   const [houseId, setHouseId] = useState(houses.length > 0 ? houses[0].id : '');
   const [userId, setUserId] = useState(users.length > 0 ? users[0].id : '');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<BookingStatus>('Active');
   const { t } = useTranslation();
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (initialData) {
@@ -37,6 +41,38 @@ const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate Dates
+    if (new Date(startDate) > new Date(endDate)) {
+        showToast('error', 'End date must be after start date');
+        return;
+    }
+
+    // Check for Overlaps
+    const hasOverlap = bookings.some(b => {
+        // Skip current booking if editing
+        if (initialData && b.id === initialData.id) return false;
+        
+        // Skip cancelled bookings
+        if (b.status === 'Cancelled') return false;
+
+        // Check only for the same house
+        if (b.houseId !== houseId) return false;
+
+        const existingStart = new Date(b.startDate);
+        const existingEnd = new Date(b.endDate);
+        const newStart = new Date(startDate);
+        const newEnd = new Date(endDate);
+
+        // Overlap logic: (StartA <= EndB) and (EndA >= StartB)
+        return newStart <= existingEnd && newEnd >= existingStart;
+    });
+
+    if (hasOverlap) {
+        showToast('error', 'This property is already booked for the selected dates.');
+        return;
+    }
+
     const selectedHouse = houses.find(h => h.id === houseId);
     const selectedUser = users.find(u => u.id === userId);
 

@@ -2,6 +2,8 @@
 import { useState, useMemo } from 'react';
 import { House, User, Contract, Payment, Notification, Booking, MonthlyRevenue, ActivityFeedItem, Communication, MaintenanceRequest, Invoice, AppSetting, UserProfile, NotificationPreferences, AppearancePreferences, LocalizationPreferences, PropertyListingDefaults, CRMSettings, TransactionManagementSettings, Subscription, PaymentMethod, BillingInvoice, Integration, Document, Automation, AuditLogEntry, Lead } from '../../shared/types/index';
 
+// --- Default / Initial Data Definitions ---
+
 const initialHouses: House[] = [
   { 
       id: 'h1', 
@@ -48,43 +50,57 @@ const initialUsers: User[] = [
   { id: 'u4', name: 'Empresa Imobiliária Luanda', email: 'admin@imobiliaria.ao', phone: '+244 222 333 444', status: 'Active', type: 'Owner' },
 ];
 
-const initialUserProfile: UserProfile = {
-    id: 'up1',
-    fullName: 'Empresa Imobiliária Luanda',
-    professionalTitle: 'Gestor Imobiliário',
-    licenseNumber: 'AO-9876543',
-    email: 'admin@imobiliaria.ao',
-    phone: '+244 222 333 444',
-    profilePictureUrl: `https://i.pravatar.cc/150?u=diana`,
-    bio: 'Especialistas em gestão de propriedades em Luanda e arredores. Comprometidos com a excelência e satisfação dos nossos clientes.',
-    serviceAreas: ['Luanda', 'Talatona', 'Kilamba'],
-    bankDetails: {
-        iban: 'AO06.0000.0000.0000.0000.0000.0', // Fake Data
-        beneficiary: 'GESTAO IMOBILIARIA DEMO LDA' // Fake Data
+// Per-User Profile Data
+const initialProfilesMap: Record<string, UserProfile> = {
+    // Admin Profile
+    'u4': {
+        id: 'up_u4',
+        fullName: 'Empresa Imobiliária Luanda',
+        professionalTitle: 'Gestor Imobiliário',
+        licenseNumber: 'AO-9876543',
+        email: 'admin@imobiliaria.ao',
+        phone: '+244 222 333 444',
+        profilePictureUrl: `https://i.pravatar.cc/150?u=admin_moduluxe`,
+        bio: 'Especialistas em gestão de propriedades em Luanda e arredores.',
+        serviceAreas: ['Luanda', 'Talatona', 'Kilamba'],
+        bankDetails: { iban: 'AO06.0000.0000.0000.0000.0000.0', beneficiary: 'GESTAO IMOBILIARIA DEMO LDA' }
+    },
+    // Tenant Profile
+    'u1': {
+        id: 'up_u1',
+        fullName: 'João Baptista',
+        professionalTitle: 'Engenheiro de Software',
+        licenseNumber: '',
+        email: 'joao.b@example.com',
+        phone: '+244 923 456 789',
+        profilePictureUrl: `https://i.pravatar.cc/150?u=joao`,
+        bio: 'Inquilino responsável. Gosto de pagamentos automáticos.',
+        serviceAreas: [],
+        bankDetails: { iban: '', beneficiary: '' }
     }
 };
 
-const initialNotificationPreferences: NotificationPreferences = {
-    email: {
-        newLead: true,
-        showingRequest: true,
-        offerSubmitted: true,
-        contractMilestone: false,
-        documentSigned: true,
-    },
-    sms: {
-        urgentOffer: true,
-        showingConfirmed: false,
-        closingTimeChange: true,
-    },
-    quietHours: {
-        enabled: true,
-        start: '22:00',
-        end: '08:00',
-    },
+const defaultProfile: UserProfile = {
+    id: 'up_guest',
+    fullName: 'Guest User',
+    professionalTitle: '',
+    licenseNumber: '',
+    email: '',
+    phone: '',
+    profilePictureUrl: 'https://i.pravatar.cc/150?u=guest',
+    bio: '',
+    serviceAreas: [],
+    bankDetails: { iban: '', beneficiary: '' }
 };
 
-const initialAppearancePreferences: AppearancePreferences = {
+// Default Settings
+const defaultNotificationPreferences: NotificationPreferences = {
+    email: { newLead: true, showingRequest: true, offerSubmitted: true, contractMilestone: false, documentSigned: true },
+    sms: { urgentOffer: true, showingConfirmed: false, closingTimeChange: true },
+    quietHours: { enabled: true, start: '22:00', end: '08:00' },
+};
+
+const defaultAppearancePreferences: AppearancePreferences = {
     theme: 'Auto',
     density: 'Comfortable',
     fontSize: 'Medium',
@@ -92,7 +108,13 @@ const initialAppearancePreferences: AppearancePreferences = {
     dashboardLayout: ['totalRevenue', 'activeContracts', 'totalUsers', 'paymentsDue']
 };
 
-const initialLocalizationPreferences: LocalizationPreferences = {
+// Mock different settings for different users
+const initialAppearanceMap: Record<string, AppearancePreferences> = {
+    'u4': { ...defaultAppearancePreferences, theme: 'Light', colorTheme: 'Nzila Ember' }, // Admin
+    'u1': { ...defaultAppearancePreferences, theme: 'Dark', colorTheme: 'Nzila Harmony' }, // Tenant likes Dark Mode
+};
+
+const defaultLocalizationPreferences: LocalizationPreferences = {
     language: 'pt-AO',
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24-hour',
@@ -101,7 +123,7 @@ const initialLocalizationPreferences: LocalizationPreferences = {
     measurementUnits: 'Square Meters',
 };
 
-const initialPropertyListingDefaults: PropertyListingDefaults = {
+const defaultPropertyListingDefaults: PropertyListingDefaults = {
     listingType: 'Rent',
     commissionRate: 5.0,
     listingDuration: 90,
@@ -111,14 +133,14 @@ const initialPropertyListingDefaults: PropertyListingDefaults = {
     syndicateToZillow: false,
 };
 
-const initialCRMSettings: CRMSettings = {
+const defaultCRMSettings: CRMSettings = {
     defaultLeadStatus: 'New',
     autoReplyNewInquiries: true,
     createTaskOnNewLead: true,
     emailSignature: `Atenciosamente,\n\nGestão Imobiliária\nModuluxe Angola`,
 };
 
-const initialTransactionManagementSettings: TransactionManagementSettings = {
+const defaultTransactionManagementSettings: TransactionManagementSettings = {
     pipelineStages: ['Lead', 'Visita', 'Proposta', 'Contrato', 'Fechado'],
     requireBrokerApproval: false,
     alertBeforeDeadlineDays: 3,
@@ -220,46 +242,79 @@ const initialMonthlyRevenue: MonthlyRevenue[] = [
     { month: 'Jul', revenue: 1150000 }, { month: 'Ago', revenue: 1150000 },
 ];
 
-export const useMockData = () => {
+// Hook accepting optional User ID to serve user-specific data
+export const useMockData = (currentUserId: string = 'guest') => {
+  // Global Data (Shared)
   const [houses, setHouses] = useState<House[]>(initialHouses);
   const [users, setUsers] = useState<User[]>(initialUsers);
-  const [userProfile, setUserProfile] = useState<UserProfile>(initialUserProfile);
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(initialNotificationPreferences);
-  const [appearancePreferences, setAppearancePreferences] = useState<AppearancePreferences>(initialAppearancePreferences);
-  const [localizationPreferences, setLocalizationPreferences] = useState<LocalizationPreferences>(initialLocalizationPreferences);
-  const [propertyListingDefaults, setPropertyListingDefaults] = useState<PropertyListingDefaults>(initialPropertyListingDefaults);
-  const [crmSettings, setCrmSettings] = useState<CRMSettings>(initialCRMSettings);
-  const [transactionManagementSettings, setTransactionManagementSettings] = useState<TransactionManagementSettings>(initialTransactionManagementSettings);
-  const [subscription] = useState<Subscription>(initialSubscription);
-  const [paymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods);
-  const [billingInvoices] = useState<BillingInvoice[]>(initialBillingInvoices);
-  const [integrations, setIntegrations] = useState<Integration[]>(initialIntegrations);
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [contracts, setContracts] = useState<Contract[]>(initialContracts);
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [documents, setDocuments] = useState<Document[]>(initialDocuments);
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const [communications, setCommunications] = useState<Communication[]>(initialCommunications);
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>(initialMaintenanceRequests);
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [automations, setAutomations] = useState<Automation[]>(initialAutomations);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [settings, setSettings] = useState<AppSetting[]>(initialSettings);
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
-
   const monthlyRevenue = initialMonthlyRevenue;
+
+  // User-Specific Data Storage (Maps keyed by UserID)
+  const [userProfilesMap, setUserProfilesMap] = useState<Record<string, UserProfile>>(initialProfilesMap);
+  const [notificationPrefsMap, setNotificationPrefsMap] = useState<Record<string, NotificationPreferences>>({});
+  const [appearancePrefsMap, setAppearancePrefsMap] = useState<Record<string, AppearancePreferences>>(initialAppearanceMap);
+  const [localizationPrefsMap, setLocalizationPrefsMap] = useState<Record<string, LocalizationPreferences>>({});
+  const [listingDefaultsMap, setListingDefaultsMap] = useState<Record<string, PropertyListingDefaults>>({});
+  const [crmSettingsMap, setCrmSettingsMap] = useState<Record<string, CRMSettings>>({});
+  const [transSettingsMap, setTransSettingsMap] = useState<Record<string, TransactionManagementSettings>>({});
+  
+  // Billing is typically Organization-wide, but we'll treat subscription per-user for the mock if needed, or static
+  const [subscription] = useState<Subscription>(initialSubscription);
+  const [paymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods);
+  const [billingInvoices] = useState<BillingInvoice[]>(initialBillingInvoices);
+  const [integrations, setIntegrations] = useState<Integration[]>(initialIntegrations);
+
+  // --- Computed Current User Settings (Getters) ---
+  const userProfile = useMemo(() => {
+      // Return specific profile if exists, else fallback to default with empty values
+      return userProfilesMap[currentUserId] || { ...defaultProfile, id: `up_${currentUserId}` };
+  }, [userProfilesMap, currentUserId]);
+
+  const notificationPreferences = useMemo(() => notificationPrefsMap[currentUserId] || defaultNotificationPreferences, [notificationPrefsMap, currentUserId]);
+  const appearancePreferences = useMemo(() => appearancePrefsMap[currentUserId] || defaultAppearancePreferences, [appearancePrefsMap, currentUserId]);
+  const localizationPreferences = useMemo(() => localizationPrefsMap[currentUserId] || defaultLocalizationPreferences, [localizationPrefsMap, currentUserId]);
+  const propertyListingDefaults = useMemo(() => listingDefaultsMap[currentUserId] || defaultPropertyListingDefaults, [listingDefaultsMap, currentUserId]);
+  const crmSettings = useMemo(() => crmSettingsMap[currentUserId] || defaultCRMSettings, [crmSettingsMap, currentUserId]);
+  const transactionManagementSettings = useMemo(() => transSettingsMap[currentUserId] || defaultTransactionManagementSettings, [transSettingsMap, currentUserId]);
+
+  // --- Actions ---
 
   const logAction = (action: string, details: string) => {
       const entry: AuditLogEntry = {
           id: `log-${Date.now()}`,
           action,
-          userId: 'current-user-id',
-          userName: 'Current User',
+          userId: currentUserId,
+          userName: userProfile.fullName || 'Unknown User',
           details,
           timestamp: new Date().toISOString()
       };
       setAuditLog(prev => [entry, ...prev]);
   };
+
+  const addNotification = (message: string, type: 'INFO' | 'WARNING' | 'SUCCESS') => {
+      const newNotif: Notification = {
+          id: `notif-${Date.now()}`,
+          message,
+          type,
+          read: false,
+          timestamp: new Date()
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  // --- Entity CRUD ---
 
   const addHouse = (house: House) => {
     setHouses(prev => [house, ...prev]);
@@ -291,38 +346,40 @@ export const useMockData = () => {
     logAction('Delete User', `Deleted user ${id}`);
   };
   
+  // --- Settings Updaters (User Specific) ---
+
   const updateUserProfile = (profile: UserProfile) => {
-    setUserProfile(profile);
+    setUserProfilesMap(prev => ({...prev, [currentUserId]: profile}));
     logAction('Update Profile', 'Updated user profile');
   };
 
   const updateNotificationPreferences = (prefs: NotificationPreferences) => {
-    setNotificationPreferences(prefs);
+    setNotificationPrefsMap(prev => ({...prev, [currentUserId]: prefs}));
     logAction('Update Settings', 'Updated notification preferences');
   };
 
   const updateAppearancePreferences = (prefs: AppearancePreferences) => {
-    setAppearancePreferences(prefs);
+    setAppearancePrefsMap(prev => ({...prev, [currentUserId]: prefs}));
     logAction('Update Settings', 'Updated appearance preferences');
   };
 
   const updateLocalizationPreferences = (prefs: LocalizationPreferences) => {
-    setLocalizationPreferences(prefs);
+    setLocalizationPrefsMap(prev => ({...prev, [currentUserId]: prefs}));
     logAction('Update Settings', 'Updated localization preferences');
   };
 
   const updatePropertyListingDefaults = (defaults: PropertyListingDefaults) => {
-    setPropertyListingDefaults(defaults);
+    setListingDefaultsMap(prev => ({...prev, [currentUserId]: defaults}));
     logAction('Update Settings', 'Updated property listing defaults');
   };
 
   const updateCrmSettings = (settings: CRMSettings) => {
-    setCrmSettings(settings);
+    setCrmSettingsMap(prev => ({...prev, [currentUserId]: settings}));
     logAction('Update Settings', 'Updated CRM settings');
   };
 
   const updateTransactionManagementSettings = (settings: TransactionManagementSettings) => {
-    setTransactionManagementSettings(settings);
+    setTransSettingsMap(prev => ({...prev, [currentUserId]: settings}));
     logAction('Update Settings', 'Updated transaction settings');
   };
   
@@ -336,14 +393,36 @@ export const useMockData = () => {
     logAction('Disconnect Integration', `Disconnected integration ${id}`);
   };
 
+  // ... (Keeping remaining business logic mostly same, just updating logAction usage via context if needed)
+
   const addContract = (contract: Contract) => {
     setContracts(prev => [contract, ...prev]);
     logAction('Create Contract', `Created contract ${contract.id}`);
+    
+    if (contract.status === 'Active') {
+        const booking = bookings.find(b => b.id === contract.bookingId);
+        if (booking) {
+            setHouses(prev => prev.map(h => 
+                h.id === booking.houseId ? { ...h, status: 'Occupied' } : h
+            ));
+            addNotification(`Property ${booking.houseName} marked as Occupied.`, 'INFO');
+        }
+    }
   };
 
   const updateContract = (updatedContract: Contract) => {
     setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
     logAction('Update Contract', `Updated contract ${updatedContract.id}`);
+    
+    if (updatedContract.status === 'Terminated' || updatedContract.status === 'Expired') {
+         const booking = bookings.find(b => b.id === updatedContract.bookingId);
+         if (booking) {
+             setHouses(prev => prev.map(h => 
+                 h.id === booking.houseId ? { ...h, status: 'Available' } : h
+             ));
+             addNotification(`Property ${booking.houseName} marked as Available (Contract Ended).`, 'INFO');
+         }
+    }
   };
 
   const deleteContract = (id: string) => {
@@ -354,6 +433,7 @@ export const useMockData = () => {
   const addBooking = (booking: Booking) => {
       setBookings(prev => [booking, ...prev]);
       logAction('Create Booking', `Created booking for ${booking.houseName}`);
+      addNotification(`New Booking Request: ${booking.houseName} by ${booking.userName}`, 'INFO');
   };
   
   const updateBooking = (updatedBooking: Booking) => {
@@ -386,21 +466,18 @@ export const useMockData = () => {
       logAction('Update Payment', `Updated payment ${updatedPayment.id}`);
   };
 
-  // SPECIAL HANDLER FOR MULTICAIXA PROOFS
   const processPaymentProof = (paymentId: string, proofData: { transactionId: string; date: string; amount: number }) => {
       const payment = payments.find(p => p.id === paymentId);
       if (payment) {
-          // 1. Update Payment
-          const updatedPayment = {
+          const updatedPayment: Payment = {
               ...payment,
-              status: 'Paid' as 'Paid',
-              paidDate: proofData.date.split(' ')[0], // Extract YYYY-MM-DD
+              status: 'Paid',
+              paidDate: proofData.date.split(' ')[0],
               transactionId: proofData.transactionId
           };
           updatePayment(updatedPayment);
           logAction('Process Proof', `Multicaixa Proof processed for ${paymentId}. ID: ${proofData.transactionId}`);
           
-          // 2. Generate Invoice
           const invoice: Invoice = {
               id: `inv-auto-${Date.now()}`,
               contractId: payment.contractId,
@@ -411,8 +488,6 @@ export const useMockData = () => {
           };
           addInvoice(invoice);
 
-          // 3. Send Notification to User
-          // Find the contract to get user details
           const contract = contracts.find(c => c.id === payment.contractId);
           if (contract) {
               addCommunication({
@@ -426,6 +501,8 @@ export const useMockData = () => {
                   type: 'Email',
                   avatarColor: 'bg-green-600'
               });
+              
+              addNotification(`Payment received for ${contract.houseName} (${proofData.amount} AOA)`, 'SUCCESS');
           }
       }
   };
@@ -451,6 +528,7 @@ export const useMockData = () => {
   const addMaintenanceRequest = (req: MaintenanceRequest) => {
     setMaintenanceRequests(prev => [req, ...prev]);
     logAction('Create Maintenance Request', `Reported issue for ${req.houseName}`);
+    addNotification(`Maintenance Request: ${req.description} at ${req.houseName}`, 'WARNING');
   };
 
   const updateMaintenanceRequest = (updatedReq: MaintenanceRequest) => {
@@ -491,6 +569,7 @@ export const useMockData = () => {
   const addLead = (lead: Lead) => {
       setLeads(prev => [lead, ...prev]);
       logAction('Create Lead', `Created lead ${lead.name}`);
+      addNotification(`New Lead: ${lead.name} (${lead.interest})`, 'INFO');
   };
 
   const updateLead = (updatedLead: Lead) => {

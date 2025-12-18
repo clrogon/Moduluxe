@@ -13,6 +13,7 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
     const [formData, setFormData] = useState<UserProfile>(profile);
     const [isSaved, setIsSaved] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
+    const [touched, setTouched] = useState<{iban?: boolean; beneficiary?: boolean}>({});
     const { t } = useTranslation();
 
     useEffect(() => {
@@ -29,10 +30,17 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
                     [name]: value
                 }
             }));
-            // Clear error when user types in bank fields
+            // Clear general error when user types
             if (validationError) setValidationError(null);
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const { name } = e.target;
+        if (name === 'iban' || name === 'beneficiary') {
+            setTouched(prev => ({ ...prev, [name]: true }));
         }
     };
 
@@ -56,6 +64,13 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
         return /^[A-Z0-9]{15,34}$/.test(cleanIban);
     };
 
+    const isBeneficiaryValid = () => {
+        if (formData.bankDetails.iban && !formData.bankDetails.beneficiary) {
+            return false;
+        }
+        return true;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -64,7 +79,7 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
             return;
         }
 
-        if (formData.bankDetails.iban && !formData.bankDetails.beneficiary) {
+        if (!isBeneficiaryValid()) {
             setValidationError('Beneficiary Name is required when an IBAN is provided.');
             return;
         }
@@ -72,10 +87,12 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
         onUpdateProfile(formData);
         setIsSaved(true);
         setValidationError(null);
+        setTouched({});
         setTimeout(() => setIsSaved(false), 2000); // Hide message after 2s
     };
     
     const formInputClasses = "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
+    const formInputErrorClasses = "border-red-500 focus:border-red-500 focus:ring-red-500";
     const formLabelClasses = "block text-sm font-medium text-gray-700 dark:text-gray-300";
 
     return (
@@ -144,10 +161,14 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
                             name="iban" 
                             id="iban" 
                             value={formData.bankDetails.iban} 
-                            onChange={handleChange} 
-                            className={`${formInputClasses} ${validationError && !validateIBAN(formData.bankDetails.iban) ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            className={`${formInputClasses} ${(touched.iban || validationError) && !validateIBAN(formData.bankDetails.iban) ? formInputErrorClasses : ''}`}
                             placeholder="AO06..."
                         />
+                        {(touched.iban || validationError) && !validateIBAN(formData.bankDetails.iban) && (
+                            <p className="mt-1 text-xs text-red-600 dark:text-red-400">Invalid IBAN format.</p>
+                        )}
                     </div>
                     <div className="sm:col-span-3">
                         <label htmlFor="beneficiary" className={formLabelClasses}>{t('settings.account.beneficiary')}</label>
@@ -157,8 +178,12 @@ const AccountProfileSettings: React.FC<AccountProfileSettingsProps> = ({ profile
                             id="beneficiary" 
                             value={formData.bankDetails.beneficiary} 
                             onChange={handleChange} 
-                            className={formInputClasses} 
+                            onBlur={handleBlur}
+                            className={`${formInputClasses} ${(touched.beneficiary || validationError) && !isBeneficiaryValid() ? formInputErrorClasses : ''}`}
                         />
+                        {(touched.beneficiary || validationError) && !isBeneficiaryValid() && (
+                            <p className="mt-1 text-xs text-red-600 dark:text-red-400">Beneficiary is required if IBAN is set.</p>
+                        )}
                     </div>
                 </div>
             </div>

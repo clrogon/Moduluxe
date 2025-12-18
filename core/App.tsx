@@ -66,6 +66,7 @@ const AppContent: React.FC = () => {
   const { t, setLanguage } = useTranslation();
   const { showToast } = useToast();
   
+  // Initialize mock data hook with current user ID to ensure profile/settings isolation
   const {
     houses, addHouse, updateHouse, deleteHouse,
     users, addUser, updateUser, deleteUser,
@@ -91,7 +92,7 @@ const AppContent: React.FC = () => {
     leads, addLead, updateLead, deleteLead,
     monthlyRevenue, activityFeed,
     settings, addSetting, updateSetting, deleteSetting,
-  } = useMockData();
+  } = useMockData(currentUser?.id);
 
   // --- SECURITY: Session Timeout Logic ---
   useEffect(() => {
@@ -177,6 +178,8 @@ const AppContent: React.FC = () => {
     const userPayments = payments.filter(p => userContractIds.includes(p.contractId));
     const userBookings = bookings.filter(b => b.userId === currentUser.id);
     const userHouseIds = userBookings.map(b => b.houseId);
+    // Maintenance requests for houses linked to the user's bookings OR contracts
+    // Also including requests specifically created by this user if we tracked userId on requests (we don't currently, but house association is a good proxy)
     const userMaintenanceRequests = maintenanceRequests.filter(m => userHouseIds.includes(m.houseId));
     const userCommunications = communications.filter(c => c.sender === currentUser.name || c.body.toLowerCase().includes(currentUser.name.toLowerCase()));
 
@@ -220,7 +223,15 @@ const AppContent: React.FC = () => {
                 switch (view) {
                     case AppView.TENANT_PORTAL:
                         if (currentUser && currentUser.type === 'Tenant' && tenantFilteredData) {
-                            return <TenantPortalView user={currentUser} contracts={tenantFilteredData.contracts} payments={tenantFilteredData.payments} maintenanceRequests={tenantFilteredData.maintenanceRequests} />;
+                            return <TenantPortalView 
+                                user={currentUser} 
+                                contracts={tenantFilteredData.contracts} 
+                                payments={tenantFilteredData.payments} 
+                                maintenanceRequests={tenantFilteredData.maintenanceRequests}
+                                onAddMaintenanceRequest={addMaintenanceRequest}
+                                onProcessPaymentProof={processPaymentProof}
+                                userProfile={userProfile}
+                            />;
                         }
                         return <div>Loading tenant data...</div>;
                     case AppView.ANALYTICS: return <AnalyticsView houses={houses} users={users} contracts={contracts} payments={payments} monthlyRevenue={monthlyRevenue} activityFeed={activityFeed} bookings={bookings} localizationPreferences={localizationPreferences} />;
@@ -281,7 +292,9 @@ const AppContent: React.FC = () => {
           </ErrorBoundary>
         </main>
       </div>
-      <Assistant appData={appData} />
+      <ErrorBoundary>
+        <Assistant appData={appData} />
+      </ErrorBoundary>
     </div>
   );
 };

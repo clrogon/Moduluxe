@@ -26,7 +26,6 @@ const Assistant: React.FC<AssistantProps> = ({ appData }) => {
   };
 
   // Initialize or update chat session when appData changes.
-  // This ensures the AI knows about newly added houses or changed statuses.
   useEffect(() => {
     if (appData) {
         chatSessionRef.current = createChatSession(appData);
@@ -54,11 +53,6 @@ const Assistant: React.FC<AssistantProps> = ({ appData }) => {
   const handleSendMessage = async () => {
     if (userInput.trim() === '' || isLoading) return;
 
-    // Ensure chat session exists before sending
-    if (!chatSessionRef.current) {
-         chatSessionRef.current = createChatSession(appData);
-    }
-
     const newUserMessage: Message = {
       id: `user-${Date.now()}`,
       text: userInput,
@@ -67,6 +61,23 @@ const Assistant: React.FC<AssistantProps> = ({ appData }) => {
     setMessages(prev => [...prev, newUserMessage]);
     setUserInput('');
     setIsLoading(true);
+
+    // Ensure chat session exists before sending
+    if (!chatSessionRef.current) {
+         // Attempt one last re-init
+         chatSessionRef.current = createChatSession(appData);
+         
+         if (!chatSessionRef.current) {
+             const errorMessage: Message = {
+                id: `ai-err-${Date.now()}`,
+                text: "AI Assistant is currently unavailable. Please ensure the API_KEY environment variable is configured.",
+                sender: 'ai',
+             };
+             setMessages(prev => [...prev, errorMessage]);
+             setIsLoading(false);
+             return;
+         }
+    }
 
     try {
       const aiResponseText = await sendMessageToChat(chatSessionRef.current, newUserMessage.text);
