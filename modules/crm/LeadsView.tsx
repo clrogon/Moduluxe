@@ -12,6 +12,7 @@ interface LeadsViewProps {
     onAddLead: (lead: Lead) => void;
     onUpdateLead: (lead: Lead) => void;
     onDeleteLead: (id: string) => void;
+    onConvertLead?: (lead: Lead) => void;
 }
 
 const KanbanColumn: React.FC<{
@@ -59,7 +60,7 @@ const KanbanColumn: React.FC<{
     );
 };
 
-const LeadsView: React.FC<LeadsViewProps> = ({ leads, houses, onAddLead, onUpdateLead, onDeleteLead }) => {
+const LeadsView: React.FC<LeadsViewProps> = ({ leads, houses, onAddLead, onUpdateLead, onDeleteLead, onConvertLead }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const { t } = useTranslation();
@@ -96,6 +97,13 @@ const LeadsView: React.FC<LeadsViewProps> = ({ leads, houses, onAddLead, onUpdat
     const handleDelete = (id: string) => {
         onDeleteLead(id);
         setIsModalOpen(false);
+    };
+
+    const handleConvert = (lead: Lead) => {
+        if (onConvertLead) {
+            onConvertLead(lead);
+            setIsModalOpen(false);
+        }
     };
 
     return (
@@ -140,6 +148,7 @@ const LeadsView: React.FC<LeadsViewProps> = ({ leads, houses, onAddLead, onUpdat
                     onSubmit={handleSubmit} 
                     onCancel={() => setIsModalOpen(false)}
                     onDelete={selectedLead ? handleDelete : undefined}
+                    onConvert={selectedLead ? handleConvert : undefined}
                 />
             </Modal>
         </div>

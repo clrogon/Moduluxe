@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MaintenanceRequest, MaintenancePriority, House, MaintenanceStatus } from '../../shared/types/index';
 
@@ -10,7 +11,7 @@ interface MaintenanceRequestFormProps {
 }
 
 const MaintenanceRequestForm: React.FC<MaintenanceRequestFormProps> = ({ initialData, houses, onSubmit, onCancel, onDelete }) => {
-  const [houseId, setHouseId] = useState(houses.length > 0 ? houses[0].id : '');
+  const [houseId, setHouseId] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<MaintenancePriority>('Low');
   const [status, setStatus] = useState<MaintenanceStatus>('Pending');
@@ -31,6 +32,11 @@ const MaintenanceRequestForm: React.FC<MaintenanceRequestFormProps> = ({ initial
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!houseId) {
+        alert("Please select a property.");
+        return;
+    }
+
     const selectedHouse = houses.find(h => h.id === houseId);
     
     const newRequest: MaintenanceRequest = {
@@ -65,6 +71,7 @@ const MaintenanceRequestForm: React.FC<MaintenanceRequestFormProps> = ({ initial
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
           disabled={!!initialData}
         >
+            {houses.length === 0 && <option value="">No properties available</option>}
             {houses.map(house => (
                 <option key={house.id} value={house.id}>{house.address}</option>
             ))}

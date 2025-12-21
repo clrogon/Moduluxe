@@ -15,8 +15,8 @@ interface BookingFormProps {
 }
 
 const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, bookings = [], onSubmit, onCancel, onCancelBooking }) => {
-  const [houseId, setHouseId] = useState(houses.length > 0 ? houses[0].id : '');
-  const [userId, setUserId] = useState(users.length > 0 ? users[0].id : '');
+  const [houseId, setHouseId] = useState('');
+  const [userId, setUserId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<BookingStatus>('Active');
@@ -31,8 +31,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, b
       setEndDate(initialData.endDate);
       setStatus(initialData.status);
     } else {
+        // Safe default selection
         setHouseId(houses.length > 0 ? houses[0].id : '');
-        setUserId(users.length > 0 ? users[0].id : '');
+        const tenantUsers = users.filter(u => u.type === 'Tenant');
+        setUserId(tenantUsers.length > 0 ? tenantUsers[0].id : '');
         setStartDate('');
         setEndDate('');
         setStatus('Active');
@@ -42,6 +44,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, b
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!houseId || !userId) {
+        showToast('error', 'Please select both a property and a tenant.');
+        return;
+    }
+
     // Validate Dates
     if (new Date(startDate) > new Date(endDate)) {
         showToast('error', 'End date must be after start date');
@@ -97,6 +104,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, b
     }
   };
 
+  const tenantUsers = users.filter(u => u.type === 'Tenant');
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -110,6 +119,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, b
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             disabled={!!initialData}
             >
+                {houses.length === 0 && <option value="">No properties available</option>}
                 {houses.map(h => (
                     <option key={h.id} value={h.id}>{h.address}</option>
                 ))}
@@ -125,7 +135,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ initialData, houses, users, b
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             disabled={!!initialData}
             >
-                {users.filter(u => u.type === 'Tenant').map(u => (
+                {tenantUsers.length === 0 && <option value="">No tenants available</option>}
+                {tenantUsers.map(u => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
             </select>

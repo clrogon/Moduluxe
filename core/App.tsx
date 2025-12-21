@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
-import { AppView, User, AppearancePreferences } from '../shared/types/index';
+import { AppView, User, AppearancePreferences, Lead } from '../shared/types/index';
 import { useMockData } from './hooks/useMockData';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -173,13 +173,19 @@ const AppContent: React.FC = () => {
 
   const tenantFilteredData = useMemo(() => {
     if (!currentUser || currentUser.type !== 'Tenant') return null;
-    const userContracts = contracts.filter(c => c.userName === currentUser.name);
+    
+    // Improved security: trace relation via Booking -> User ID match, not Name
+    const userContracts = contracts.filter(c => {
+        const booking = bookings.find(b => b.id === c.bookingId);
+        return booking?.userId === currentUser.id;
+    });
+    
     const userContractIds = userContracts.map(c => c.id);
     const userPayments = payments.filter(p => userContractIds.includes(p.contractId));
     const userBookings = bookings.filter(b => b.userId === currentUser.id);
     const userHouseIds = userBookings.map(b => b.houseId);
-    // Maintenance requests for houses linked to the user's bookings OR contracts
-    // Also including requests specifically created by this user if we tracked userId on requests (we don't currently, but house association is a good proxy)
+    
+    // Maintenance requests for houses linked to the user's bookings
     const userMaintenanceRequests = maintenanceRequests.filter(m => userHouseIds.includes(m.houseId));
     const userCommunications = communications.filter(c => c.sender === currentUser.name || c.body.toLowerCase().includes(currentUser.name.toLowerCase()));
 
@@ -194,6 +200,26 @@ const AppContent: React.FC = () => {
   const handleSearchNavigation = (search: InitialSearch) => {
     setInitialSearch(search);
     setView(search.view);
+  };
+  
+  const handleConvertLead = (lead: Lead) => {
+      // 1. Create a new user from the lead
+      const newUser: User = {
+          id: `u-${Date.now()}`,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          type: 'Tenant',
+          status: 'Active'
+      };
+      addUser(newUser);
+      
+      // 2. Archive/Delete the lead
+      deleteLead(lead.id);
+      
+      showToast('success', `Lead ${lead.name} converted to Tenant successfully!`);
+      // Optional: switch to Users view
+      setView(AppView.USERS);
   };
   
   useEffect(() => {
@@ -235,7 +261,7 @@ const AppContent: React.FC = () => {
                         }
                         return <div>Loading tenant data...</div>;
                     case AppView.ANALYTICS: return <AnalyticsView houses={houses} users={users} contracts={contracts} payments={payments} monthlyRevenue={monthlyRevenue} activityFeed={activityFeed} bookings={bookings} localizationPreferences={localizationPreferences} />;
-                    case AppView.LEADS: return <LeadsView leads={leads || []} houses={houses} onAddLead={addLead} onUpdateLead={updateLead} onDeleteLead={deleteLead} />;
+                    case AppView.LEADS: return <LeadsView leads={leads || []} houses={houses} onAddLead={addLead} onUpdateLead={updateLead} onDeleteLead={deleteLead} onConvertLead={handleConvertLead} />;
                     case AppView.HOUSES: return <HousesView houses={houses} onAddHouse={addHouse} onUpdateHouse={updateHouse} onDeleteHouse={deleteHouse} maintenanceRequests={maintenanceRequests} initialSearchTerm={searchTerm} />;
                     case AppView.USERS: return <UsersView users={users} onAddUser={addUser} onUpdateUser={updateUser} onDeleteUser={deleteUser} initialSearchTerm={searchTerm} />;
                     case AppView.CONTRACTS: return <ContractsView contracts={contracts} bookings={bookings} onAddContract={addContract} onUpdateContract={updateContract} onDeleteContract={deleteContract} initialSearchTerm={searchTerm} />;

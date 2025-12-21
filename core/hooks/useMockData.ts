@@ -31,7 +31,11 @@ const initialUsers: User[] = [
   { id: 'u4', name: 'Empresa Imobiliária Luanda', email: 'admin@imobiliaria.ao', phone: '+244 222 333 444', status: 'Active', type: 'Owner' },
 ];
 
-// ... (Rest of initial data constants same as before, simplified for brevity in this file update logic, assume they exist) ...
+const initialLeads: Lead[] = [
+    { id: 'l1', name: 'Maria Silva', email: 'maria.s@example.com', phone: '+244 912 345 678', status: 'New', source: 'Website', interest: 'Talatona, Condomínio Vereda das Flores', notes: 'Interested in moving next month.', createdAt: new Date().toISOString() },
+    { id: 'l2', name: 'Carlos Manuel', email: 'carlos.m@example.com', phone: '+244 933 222 111', status: 'Contacted', source: 'Referral', interest: 'Rua Rainha Ginga', notes: 'Budget around 400k.', createdAt: new Date(Date.now() - 86400000).toISOString() },
+];
+
 const initialContracts: Contract[] = [
     { id: 'c1', bookingId: 'b1', houseName: 'Rua Rainha Ginga', userName: 'João Baptista', startDate: '2024-01-01', endDate: '2024-12-31', status: 'Active' }
 ];
@@ -125,12 +129,6 @@ const initialPaymentMethods: PaymentMethod[] = [
     { id: 'pm_1', type: 'Bank Account', details: 'BAI **** 1234', isDefault: true },
 ];
 
-const initialMonthlyRevenue: MonthlyRevenue[] = [
-    { month: 'Jan', revenue: 1150000 }, { month: 'Fev', revenue: 1150000 }, { month: 'Mar', revenue: 1150000 },
-    { month: 'Abr', revenue: 1150000 }, { month: 'Mai', revenue: 1150000 }, { month: 'Jun', revenue: 1150000 },
-    { month: 'Jul', revenue: 1150000 }, { month: 'Ago', revenue: 1150000 },
-];
-
 // Helper to load from local storage or return default
 const loadState = <T>(key: string, defaultValue: T): T => {
     if (typeof window === 'undefined') return defaultValue;
@@ -148,13 +146,13 @@ export const useMockData = (currentUserId: string = 'guest') => {
   const [contracts, setContracts] = useState<Contract[]>(() => isDemoMode ? loadState('contracts', initialContracts) : initialContracts);
   const [bookings, setBookings] = useState<Booking[]>(() => isDemoMode ? loadState('bookings', initialBookings) : initialBookings);
   const [payments, setPayments] = useState<Payment[]>(() => isDemoMode ? loadState('payments', initialPayments) : initialPayments);
+  const [leads, setLeads] = useState<Lead[]>(() => isDemoMode ? loadState('leads', initialLeads) : initialLeads);
   
   const [documents, setDocuments] = useState<Document[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [settings, setSettings] = useState<AppSetting[]>([]);
@@ -173,7 +171,29 @@ export const useMockData = (currentUserId: string = 'guest') => {
   const [billingInvoices] = useState<BillingInvoice[]>([]);
   const [integrations, setIntegrations] = useState<Integration[]>([]);
 
-  const monthlyRevenue = initialMonthlyRevenue;
+  // Calculate Monthly Revenue Dynamically from Payments
+  const monthlyRevenue = useMemo(() => {
+      const revenueByMonth: Record<string, number> = {};
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      
+      // Initialize months to 0
+      months.forEach(m => revenueByMonth[m] = 0);
+
+      payments.forEach(p => {
+          if (p.status === 'Paid' && p.paidDate) {
+              const date = new Date(p.paidDate);
+              if (!isNaN(date.getTime())) {
+                  const monthIndex = date.getMonth(); // 0-11
+                  const monthName = months[monthIndex];
+                  if (revenueByMonth[monthName] !== undefined) {
+                      revenueByMonth[monthName] += p.amount;
+                  }
+              }
+          }
+      });
+
+      return months.map(m => ({ month: m, revenue: revenueByMonth[m] }));
+  }, [payments]);
 
   // --- LOCAL STORAGE PERSISTENCE (Demo Mode Only) ---
   useEffect(() => {
@@ -183,8 +203,9 @@ export const useMockData = (currentUserId: string = 'guest') => {
           localStorage.setItem('moduluxe_contracts', JSON.stringify(contracts));
           localStorage.setItem('moduluxe_bookings', JSON.stringify(bookings));
           localStorage.setItem('moduluxe_payments', JSON.stringify(payments));
+          localStorage.setItem('moduluxe_leads', JSON.stringify(leads));
       }
-  }, [houses, users, contracts, bookings, payments, isDemoMode]);
+  }, [houses, users, contracts, bookings, payments, leads, isDemoMode]);
 
   // --- SUPABASE HYDRATION (Live Mode Only) ---
   useEffect(() => {
@@ -234,7 +255,6 @@ export const useMockData = (currentUserId: string = 'guest') => {
         }
 
         // 4. Contracts
-        // Note: Joining to get Names via Bookings is complex in one hook, keeping simple for MVP
         const { data: dbContracts } = await supabase.from('contracts').select('*');
         if (dbContracts) {
              setContracts(dbContracts.map((c: any) => ({
@@ -243,7 +263,7 @@ export const useMockData = (currentUserId: string = 'guest') => {
                  startDate: c.start_date,
                  endDate: c.end_date,
                  status: c.status,
-                 houseName: 'Loading...', // Ideally fetch via join
+                 houseName: 'Loading...', 
                  userName: 'Loading...'
              })));
         }
@@ -290,6 +310,7 @@ export const useMockData = (currentUserId: string = 'guest') => {
               setContracts(initialContracts);
               setBookings(initialBookings);
               setPayments(initialPayments);
+              setLeads(initialLeads);
               showToast('success', 'Demo data reset successfully.');
           }
           return;

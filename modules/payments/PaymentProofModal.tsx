@@ -20,6 +20,7 @@ const mockOCR = async (file: File): Promise<string> => {
     return new Promise((resolve) => {
         setTimeout(() => {
             // Return sample text with Fake IBAN to match the sanitized mock profile
+            // AND matching amount (500,000) for "Out of Box" experience
             resolve(`
                 Comprovativo Digital
                 Detalhe da operação realizada através do canal MULTICAIXA Express.
@@ -27,10 +28,10 @@ const mockOCR = async (file: File): Promise<string> => {
                 Operação Transferência Bancária
                 Destinatário GESTAO IMOBILIARIA DEMO LDA
                 IBAN AO06.0000.0000.0000.0000.0000.0
-                Montante 592.051,05 Kz
+                Montante 500.000,00 Kz
                 Comissão -
                 Imposto -
-                Total 592.051,05 Kz
+                Total 500.000,00 Kz
                 Transacção 9412372
             `);
         }, 1500);

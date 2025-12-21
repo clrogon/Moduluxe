@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lead, LeadStatus, House } from '../../shared/types/index';
 import { useTranslation } from '../../core/i18n/LanguageContext';
+import { UserCircleIcon } from '../../components/ui/icons/Icons';
 
 interface LeadFormProps {
   initialData?: Lead | null;
@@ -9,9 +10,10 @@ interface LeadFormProps {
   onSubmit: (lead: Lead) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
+  onConvert?: (lead: Lead) => void;
 }
 
-const LeadForm: React.FC<LeadFormProps> = ({ initialData, houses, onSubmit, onCancel, onDelete }) => {
+const LeadForm: React.FC<LeadFormProps> = ({ initialData, houses, onSubmit, onCancel, onDelete, onConvert }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -63,6 +65,14 @@ const LeadForm: React.FC<LeadFormProps> = ({ initialData, houses, onSubmit, onCa
             onDelete(initialData.id);
         }
     }
+  };
+
+  const handleConvert = () => {
+      if (initialData && onConvert) {
+          if (window.confirm(`Convert ${initialData.name} to a Tenant? This will create a new user account and remove the lead.`)) {
+              onConvert(initialData);
+          }
+      }
   };
 
   return (
@@ -161,17 +171,28 @@ const LeadForm: React.FC<LeadFormProps> = ({ initialData, houses, onSubmit, onCa
       </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-        {initialData && onDelete ? (
-            <button
-                type="button"
-                onClick={handleDelete}
-                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
-            >
-                {t('common.delete')}
-            </button>
-        ) : (
-            <div></div>
-        )}
+        <div className="flex space-x-2">
+            {initialData && onDelete && (
+                <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
+                >
+                    {t('common.delete')}
+                </button>
+            )}
+            {initialData && onConvert && (
+                 <button
+                    type="button"
+                    onClick={handleConvert}
+                    className="flex items-center text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium ml-4"
+                >
+                    <UserCircleIcon className="h-4 w-4 mr-1" />
+                    Convert to Tenant
+                </button>
+            )}
+        </div>
+        
         <div className="flex space-x-3">
             <button
             type="button"

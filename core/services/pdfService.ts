@@ -1,7 +1,7 @@
-import { Invoice, Contract, User, House } from '../../shared/types/index';
 
-// Global declaration for jspdf provided via CDN
-declare const jspdf: any;
+import { Invoice, Contract, User, House } from '../../shared/types/index';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface FinancialReportSummary {
     totalRevenue: number;
@@ -21,7 +21,6 @@ interface FinancialReportRow {
 
 export const PDFService = {
     generateFinancialReportPDF: (summary: FinancialReportSummary, data: FinancialReportRow[]) => {
-        const { jsPDF } = jspdf;
         const doc = new jsPDF();
 
         // Header
@@ -52,20 +51,15 @@ export const PDFService = {
 
         // Table
         const tableColumn = ["Date", "Tenant", "Property", "Type", "Amount"];
-        const tableRows = [];
+        const tableRows = data.map(row => [
+            row.paymentDate,
+            row.tenantName,
+            row.propertyAddress,
+            row.propertyType,
+            row.amount.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
+        ]);
 
-        data.forEach(row => {
-            const rowData = [
-                row.paymentDate,
-                row.tenantName,
-                row.propertyAddress,
-                row.propertyType,
-                row.amount.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })
-            ];
-            tableRows.push(rowData);
-        });
-
-        doc.autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 80,
@@ -78,7 +72,6 @@ export const PDFService = {
     },
 
     generateInvoicePDF: (invoice: Invoice, contract: Contract | undefined, user: User | undefined, house: House | undefined) => {
-        const { jsPDF } = jspdf;
         const doc = new jsPDF();
 
         // Company Header
@@ -133,7 +126,7 @@ export const PDFService = {
             [`Rent Payment - Contract ${contract?.id || 'N/A'}`, invoice.amount.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })]
         ];
 
-        doc.autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 95,
