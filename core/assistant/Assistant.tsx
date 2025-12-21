@@ -67,7 +67,9 @@ const Assistant: React.FC<AssistantProps> = ({ appData, user }) => {
     // Ensure chat session exists before sending
     if (!chatSessionRef.current) {
          // Attempt one last re-init
-         chatSessionRef.current = createChatSession(appData, user);
+         if (appData && user) {
+             chatSessionRef.current = createChatSession(appData, user);
+         }
          
          if (!chatSessionRef.current) {
              const errorMessage: Message = {

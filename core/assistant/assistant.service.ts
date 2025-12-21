@@ -73,6 +73,8 @@ const filterAndSummarizeContext = (data: AppData, user: User) => {
         payments: data.payments.map(p => ({ amount: p.amount, status: p.status, due: p.dueDate })),
         maintenance: data.maintenanceRequests.map(m => ({ issue: m.description, status: m.status, priority: m.priority })),
         // Explicitly excluding: auditLog, settings, automations to minimize data exposure risk.
+        // Including leads for business context
+        leads: data.leads?.map(l => ({ name: l.name, status: l.status, interest: l.interest }))
     };
 };
 
