@@ -319,7 +319,7 @@ const AppContent: React.FC = () => {
         </main>
       </div>
       <ErrorBoundary>
-        <Assistant appData={appData} />
+        <Assistant appData={appData} user={currentUser} />
       </ErrorBoundary>
     </div>
   );

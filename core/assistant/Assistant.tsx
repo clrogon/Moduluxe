@@ -1,15 +1,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, AppData } from '../../shared/types/index';
+import { Message, AppData, User } from '../../shared/types/index';
 import { createChatSession, sendMessageToChat } from './assistant.service';
 import { ChatBubbleIcon, CloseIcon, SendIcon } from '../../components/ui/icons/Icons';
 import { Chat } from "@google/genai";
 
 interface AssistantProps {
-  appData: AppData; 
+  appData: AppData;
+  user: User;
 }
 
-const Assistant: React.FC<AssistantProps> = ({ appData }) => {
+const Assistant: React.FC<AssistantProps> = ({ appData, user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: "Hello! How can I help you manage your properties today?", sender: 'ai' }
@@ -25,12 +26,13 @@ const Assistant: React.FC<AssistantProps> = ({ appData }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Initialize or update chat session when appData changes.
+  // Initialize or update chat session when appData or user changes.
+  // This ensures that if the user logs out and a new user logs in, the session is recreated with the correct permissions.
   useEffect(() => {
-    if (appData) {
-        chatSessionRef.current = createChatSession(appData);
+    if (appData && user) {
+        chatSessionRef.current = createChatSession(appData, user);
     }
-  }, [appData]);
+  }, [appData, user]);
 
   // Handle scroll and focus on open
   useEffect(() => {
@@ -65,7 +67,7 @@ const Assistant: React.FC<AssistantProps> = ({ appData }) => {
     // Ensure chat session exists before sending
     if (!chatSessionRef.current) {
          // Attempt one last re-init
-         chatSessionRef.current = createChatSession(appData);
+         chatSessionRef.current = createChatSession(appData, user);
          
          if (!chatSessionRef.current) {
              const errorMessage: Message = {

@@ -1,4 +1,3 @@
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ExclamationCircleIcon } from '../../components/ui/icons/Icons';
 
@@ -12,10 +11,13 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null,
-  };
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
@@ -43,7 +45,7 @@ class ErrorBoundary extends Component<Props, State> {
              </code>
           </div>
           <button
-            onClick={() => this.setState({ hasError: false })}
+            onClick={() => this.setState({ hasError: false, error: null })}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
           >
             Try Again
