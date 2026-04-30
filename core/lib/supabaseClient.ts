@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const meta = import.meta as ImportMeta & { env?: Record<string, string | undefined> };
