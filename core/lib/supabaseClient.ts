@@ -38,3 +38,10 @@ export const supabase = missingVars.length === 0
   : createUnavailableClient();
 
 export const isSupabaseConfigured = missingVars.length === 0;
+  throw new Error(`Missing required Supabase environment variable(s): ${missingVars.join(', ')}.`);
+}
+
+const requiredSupabaseUrl = supabaseUrl as string;
+const requiredSupabaseAnonKey = supabaseAnonKey as string;
+
+export const supabase = createClient(requiredSupabaseUrl, requiredSupabaseAnonKey);
