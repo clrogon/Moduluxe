@@ -5,6 +5,7 @@ import DataTable from '../../components/ui/DataTable';
 import { ChartBarIcon, CreditCardIcon, DocumentTextIcon, CalendarDaysIcon } from '../../components/ui/icons/Icons';
 import DashboardCard from '../../components/ui/DashboardCard';
 import { useTranslation } from '../../core/i18n/LanguageContext';
+import { ExportContext } from '../../core/domain/reporting/ExportContext';
 import { PDFService } from '../../core/services/pdfService';
 
 interface ReportingViewProps {
@@ -24,6 +25,9 @@ const ReportingView: React.FC<ReportingViewProps> = ({ payments, contracts, hous
         endDate: today.toISOString().split('T')[0],
         houseType: 'All',
     });
+    
+    // Strategy selection state
+    const [exportType, setExportType] = useState('pdf');
 
     const { reportData, summary } = useMemo(() => {
         return generateReportData({ payments, contracts, houses, bookings }, filters);
@@ -34,14 +38,17 @@ const ReportingView: React.FC<ReportingViewProps> = ({ payments, contracts, hous
     };
 
     const handleExport = () => {
-        const pdfSummary = {
+        const expSummary = {
             totalRevenue: summary.totalRevenue,
             paymentCount: summary.paymentCount,
             newBookings: summary.newBookings,
             startDate: filters.startDate,
             endDate: filters.endDate
         };
-        PDFService.generateFinancialReportPDF(pdfSummary, reportData);
+        
+        const context = ExportContext.getInstance();
+        context.setActiveStrategy(exportType);
+        context.getActiveStrategy().export(expSummary, reportData);
     };
 
     const columns = useMemo(() => [
@@ -83,8 +90,21 @@ const ReportingView: React.FC<ReportingViewProps> = ({ payments, contracts, hous
                         <option value="Condo">Condo</option>
                     </select>
                 </div>
-                <div className="w-full md:w-auto self-end">
-                    <button onClick={handleExport} className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg shadow transition-colors flex items-center justify-center">
+                <div className="w-full md:w-auto self-end flex flex-row items-center gap-2">
+                    <div className="flex-1 min-w-[120px]">
+                        <select 
+                            id="exportType"
+                            name="exportType"
+                            value={exportType}
+                            onChange={(e) => setExportType(e.target.value)}
+                            className="block w-full py-2.5 pl-3 pr-10 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="pdf">PDF Report</option>
+                            <option value="csv">CSV Sheet</option>
+                            <option value="json">JSON Schema</option>
+                        </select>
+                    </div>
+                    <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg shadow transition-colors flex items-center justify-center whitespace-nowrap">
                         <DocumentTextIcon className="h-5 w-5 mr-2" />
                         {t('reporting.export')}
                     </button>

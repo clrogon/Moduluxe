@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Contract, ContractStatus, Booking } from '../../shared/types/index';
 import { useTranslation } from '../../core/i18n/LanguageContext';
+import { ExclamationCircleIcon } from '../../components/ui/icons/Icons';
 
 interface ContractFormProps {
   initialData?: Contract | null;
   bookings: Booking[];
+  contracts: Contract[];
   onSubmit: (contract: Contract) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
 }
 
-const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, onSubmit, onCancel, onDelete }) => {
+const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, contracts, onSubmit, onCancel, onDelete }) => {
   const [bookingId, setBookingId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -48,13 +50,50 @@ const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, onSu
     }
   }, [bookingId, bookings, initialData]);
 
+  const selectedBooking = useMemo(() => {
+    return bookings.find(b => b.id === bookingId);
+  }, [bookingId, bookings]);
+
+  const isOverlapping = useMemo(() => {
+    if (!selectedBooking || !startDate || !endDate) return null;
+    const sDate = new Date(startDate);
+    const eDate = new Date(endDate);
+    if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return null;
+
+    // Find any conflicting active/expired contract for the same house (exclude current)
+    const conflicting = contracts.find(c => {
+        if (initialData && c.id === initialData.id) return false;
+        if (c.status === 'Terminated') return false;
+
+        const cBooking = bookings.find(b => b.id === c.bookingId);
+        const isSameHouse = cBooking 
+            ? cBooking.houseId === selectedBooking.houseId 
+            : c.houseName === selectedBooking.houseName;
+
+        if (!isSameHouse) return false;
+
+        const cStart = new Date(c.startDate);
+        const cEnd = new Date(c.endDate);
+        if (isNaN(cStart.getTime()) || isNaN(cEnd.getTime())) return false;
+
+        return sDate <= cEnd && cStart <= eDate;
+    });
+
+    return conflicting;
+  }, [selectedBooking, startDate, endDate, contracts, bookings, initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedBooking = bookings.find(b => b.id === bookingId);
     if (!selectedBooking) {
         alert("Please select a valid booking.");
         return;
+    }
+
+    if (isOverlapping) {
+        const confirmMessage = `Warning: This lease period overlaps with an existing active lease for this property ("${isOverlapping.houseName}") held by ${isOverlapping.userName} (${isOverlapping.startDate} to ${isOverlapping.endDate}).\n\nAre you sure you want to proceed and save?`;
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
     }
 
     const contract: Contract = {
@@ -79,6 +118,18 @@ const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, onSu
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {isOverlapping && (
+        <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 p-4 rounded-r-lg space-y-1 shadow-sm">
+          <div className="flex items-center text-red-800 dark:text-red-200 font-bold text-sm">
+            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" />
+            <span>Overlapping Contract Warning</span>
+          </div>
+          <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
+            This property (<strong>{isOverlapping.houseName}</strong>) is already leased/reserved to <strong>{isOverlapping.userName}</strong> under an active contract from <strong>{isOverlapping.startDate}</strong> to <strong>{isOverlapping.endDate}</strong>. Adding this contract will create a double-booking conflict.
+          </p>
+        </div>
+      )}
+
       <div>
         <label htmlFor="booking" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('contracts.form.booking')}</label>
         <select

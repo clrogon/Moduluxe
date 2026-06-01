@@ -1,6 +1,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { PersistenceStrategyRegistry } from '../domain/persistence/PersistenceStrategyRegistry';
 import { House, User, Contract, Payment, Notification, Booking, MonthlyRevenue, ActivityFeedItem, Communication, MaintenanceRequest, Invoice, AppSetting, UserProfile, NotificationPreferences, AppearancePreferences, LocalizationPreferences, PropertyListingDefaults, CRMSettings, TransactionManagementSettings, Subscription, PaymentMethod, BillingInvoice, Integration, Document, Automation, AuditLogEntry, Lead } from '../../shared/types/index';
 import { useToast } from '../context/ToastContext';
 
@@ -45,6 +46,16 @@ const initialBookings: Booking[] = [
 const initialPayments: Payment[] = [
     { id: 'p1', contractId: 'c1', amount: 500000, dueDate: '2024-02-01', paidDate: '2024-02-01', status: 'Paid' },
     { id: 'p2', contractId: 'c1', amount: 500000, dueDate: '2024-03-01', paidDate: null, status: 'Due' }
+];
+
+const initialAutomations: Automation[] = [
+    {
+        id: 'auto-expiry-30',
+        name: '30-Day Lease Expiration Reminder',
+        trigger: 'Contract Expiring Soon',
+        action: 'Send Email',
+        active: true
+    }
 ];
 
 const initialProfilesMap: Record<string, UserProfile> = {
@@ -140,20 +151,20 @@ export const useMockData = (currentUserId: string = 'guest') => {
   const { showToast } = useToast();
   const isDemoMode = !supabase;
 
-  // Global Data - Initialize from LocalStorage in Demo Mode, or Defaults
-  const [houses, setHouses] = useState<House[]>(() => isDemoMode ? loadState('houses', initialHouses) : initialHouses);
-  const [users, setUsers] = useState<User[]>(() => isDemoMode ? loadState('users', initialUsers) : initialUsers);
-  const [contracts, setContracts] = useState<Contract[]>(() => isDemoMode ? loadState('contracts', initialContracts) : initialContracts);
-  const [bookings, setBookings] = useState<Booking[]>(() => isDemoMode ? loadState('bookings', initialBookings) : initialBookings);
-  const [payments, setPayments] = useState<Payment[]>(() => isDemoMode ? loadState('payments', initialPayments) : initialPayments);
-  const [leads, setLeads] = useState<Lead[]>(() => isDemoMode ? loadState('leads', initialLeads) : initialLeads);
+  // Global Data - Hydrated asynchronously via active Database Strategy
+  const [houses, setHouses] = useState<House[]>(initialHouses);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [contracts, setContracts] = useState<Contract[]>(initialContracts);
+  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads);
   
   const [documents, setDocuments] = useState<Document[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [automations, setAutomations] = useState<Automation[]>(initialAutomations);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [settings, setSettings] = useState<AppSetting[]>([]);
   
@@ -195,17 +206,52 @@ export const useMockData = (currentUserId: string = 'guest') => {
       return months.map(m => ({ month: m, revenue: revenueByMonth[m] }));
   }, [payments]);
 
-  // --- LOCAL STORAGE PERSISTENCE (Demo Mode Only) ---
-  useEffect(() => {
-      if (isDemoMode) {
-          localStorage.setItem('moduluxe_houses', JSON.stringify(houses));
-          localStorage.setItem('moduluxe_users', JSON.stringify(users));
-          localStorage.setItem('moduluxe_contracts', JSON.stringify(contracts));
-          localStorage.setItem('moduluxe_bookings', JSON.stringify(bookings));
-          localStorage.setItem('moduluxe_payments', JSON.stringify(payments));
-          localStorage.setItem('moduluxe_leads', JSON.stringify(leads));
+  // --- DYNAMIC DATABASE STRATEGY LOADING ---
+  const rehydrateActiveStrategy = useCallback(async () => {
+      const activeStrategy = PersistenceStrategyRegistry.getInstance().getActiveStrategy();
+      await activeStrategy.initialize();
+      
+      try {
+          const [loadedHouses, loadedUsers, loadedContracts, loadedBookings, loadedPayments, loadedLeads, loadedAutomations] = await Promise.all([
+              activeStrategy.load<House>('houses', initialHouses),
+              activeStrategy.load<User>('users', initialUsers),
+              activeStrategy.load<Contract>('contracts', initialContracts),
+              activeStrategy.load<Booking>('bookings', initialBookings),
+              activeStrategy.load<Payment>('payments', initialPayments),
+              activeStrategy.load<Lead>('leads', initialLeads),
+              activeStrategy.load<Automation>('automations', initialAutomations)
+          ]);
+
+          setHouses(loadedHouses);
+          setUsers(loadedUsers);
+          setContracts(loadedContracts);
+          setBookings(loadedBookings);
+          setPayments(loadedPayments);
+          setLeads(loadedLeads);
+          setAutomations(loadedAutomations);
+      } catch (err) {
+          console.error("Hydration strategy failed, falling back to basic state definitions.", err);
       }
-  }, [houses, users, contracts, bookings, payments, leads, isDemoMode]);
+  }, []);
+
+  // Initial Strategy Hydration
+  useEffect(() => {
+      rehydrateActiveStrategy();
+  }, [rehydrateActiveStrategy]);
+
+  // --- STRATEGY PERSISTENCE SYNCHRONIZATION EFFECT ---
+  useEffect(() => {
+      const activeStrategy = PersistenceStrategyRegistry.getInstance().getActiveStrategy();
+      
+      // Save altered domain entities to our active database engine
+      activeStrategy.save('houses', houses);
+      activeStrategy.save('users', users);
+      activeStrategy.save('contracts', contracts);
+      activeStrategy.save('bookings', bookings);
+      activeStrategy.save('payments', payments);
+      activeStrategy.save('leads', leads);
+      activeStrategy.save('automations', automations);
+  }, [houses, users, contracts, bookings, payments, leads, automations]);
 
   // --- SUPABASE HYDRATION (Live Mode Only) ---
   useEffect(() => {
@@ -720,6 +766,6 @@ export const useMockData = (currentUserId: string = 'guest') => {
     leads, addLead, updateLead, deleteLead,
     monthlyRevenue, activityFeed,
     settings, addSetting, updateSetting, deleteSetting,
-    seedDatabase, isDemoMode
+    seedDatabase, isDemoMode, rehydrateActiveStrategy
   };
 };

@@ -3,6 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useTranslation } from '../../core/i18n/LanguageContext';
 import { ArrowDownTrayIcon, DocumentTextIcon, CheckCircleIcon, ExclamationCircleIcon, SpinnerIcon } from '../../components/ui/icons/Icons';
 import { parseBankFile, BankTransaction } from './utils/fileParser';
+import { ReconciliationStrategyRegistry } from '../../core/domain/reconciliation/ReconciliationStrategyRegistry';
 import { Payment } from '../../shared/types/index';
 import { formatCurrency } from '../../core/utils/format';
 import { useToast } from '../../core/context/ToastContext';
@@ -32,7 +33,10 @@ const BankReconciliationView: React.FC<BankReconciliationViewProps> = ({ payment
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target?.result as string;
-            const parsed = parseBankFile(content);
+            
+            // Invoke the Strategy Pattern engine
+            const { strategyUsed, transactions: parsed } = ReconciliationStrategyRegistry.getInstance().detectAndParse(content);
+            showToast('info', `Successfully parsed using: ${strategyUsed.name}`);
             
             // Auto-matching logic
             const matched = parsed.map(txn => {

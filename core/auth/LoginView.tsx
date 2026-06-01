@@ -133,7 +133,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             </div>
             {isLoading && (
                 <div className="mt-4 text-center text-sm text-blue-600">
-                    {t('login.authenticating', { role: loadingRole ?? '' })}
+                    {t('login.authenticating', { role: loadingRole })}
                 </div>
             )}
           </div>

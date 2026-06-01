@@ -51,7 +51,10 @@ const filterAndSummarizeContext = (data: AppData, user: User) => {
         const userContractIds = new Set(userContracts.map(c => c.id));
 
         const userPayments = data.payments.filter(p => userContractIds.has(p.contractId));
+        // Maintenance requests for houses the tenant is associated with
         const userMaintenance = data.maintenanceRequests.filter(m => userHouseIds.has(m.houseId));
+        
+        // Filter houses to only those the tenant is associated with
         const userHouses = data.houses.filter(h => userHouseIds.has(h.id));
 
         return {
@@ -64,7 +67,7 @@ const filterAndSummarizeContext = (data: AppData, user: User) => {
     }
 
     // Admin / Owner View (Full but summarized)
-    // Exclude heavy/sensitive arrays like auditLog, documents (file URLs), and leads unless necessary.
+    // Exclude heavy/sensitive arrays like auditLog, documents (file URLs), and detailed settings unless necessary.
     return {
         currentUser: { name: user.name, role: user.type },
         houses: data.houses.map(h => ({ id: h.id, type: h.type, address: h.address, status: h.status, rent: h.rent })),
@@ -72,8 +75,7 @@ const filterAndSummarizeContext = (data: AppData, user: User) => {
         contracts: data.contracts.map(c => ({ id: c.id, house: c.houseName, tenant: c.userName, status: c.status, end: c.endDate })),
         payments: data.payments.map(p => ({ amount: p.amount, status: p.status, due: p.dueDate })),
         maintenance: data.maintenanceRequests.map(m => ({ issue: m.description, status: m.status, priority: m.priority })),
-        // Explicitly excluding: auditLog, settings, automations to minimize data exposure risk.
-        // Including leads for business context
+        // Explicitly excluding: auditLog, documents, automations to minimize data exposure risk and context size.
         leads: data.leads?.map(l => ({ name: l.name, status: l.status, interest: l.interest }))
     };
 };

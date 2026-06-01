@@ -107,6 +107,7 @@ const ContractsView: React.FC<ContractsViewProps> = ({ contracts, bookings, onAd
             <ContractForm 
                 initialData={selectedContract}
                 bookings={bookings}
+                contracts={contracts}
                 onSubmit={handleSubmit}
                 onCancel={() => setIsModalOpen(false)}
                 onDelete={selectedContract ? handleDelete : undefined}

@@ -1,64 +1,83 @@
 # Moduluxe Real Estate Dashboard
 
-**Moduluxe** is a modern, modular property management platform designed specifically for the Angolan real estate market, with support for international standards. It features a robust dashboard for managing properties, tenants, contracts, and payments, integrated with **Gemini AI** for intelligent assistance and automated data processing.
+**Moduluxe** is a high-performance, Domain-Driven Design (DDD) property management platform designed originally for the Angolan real estate market with global extensibility. It utilizes a robust, decoupled **Strategy Pattern** across multiple subdomains to handle data persistence, financial report generation, and bank transactions reconciliation without hard-coding specific database engines or document structure logic.
 
-## 🚀 Key Features
+---
 
-*   **Angola-First Localization**: Native support for Kwanza (AOA), West Africa Time, and Portuguese (Angola/Brasil).
-*   **Multicaixa Express Integration**: Automated OCR parsing of payment proof PDFs/Images to reconcile payments instantly.
-*   **AI Assistant**: Integrated Gemini 2.5 Flash for natural language queries about your portfolio.
-*   **Role-Based Access Control (RBAC)**: Distinct views for Admins, Owners, and Tenants.
-*   **Tenant Portal**: Dedicated interface for tenants to view contracts, pay rent, and report issues.
-*   **Financial Reporting**: Automated PDF generation for invoices and financial summaries.
-*   **Modular Architecture**: Scalable codebase separated into Core, Business, Operational, and System modules.
+## 🎨 System Design & Architecture Overview
 
-## 🛠️ Tech Stack
+The system adheres strictly to the principles of **Domain-Driven Design (DDD)** and the GoF **Strategy Pattern**. This ensures complete decoupling of the Domain Model from external infrastructures (such as databases, file parsers, and template renderers).
 
-*   **Frontend**: React 18, TypeScript
-*   **Styling**: Tailwind CSS
-*   **AI**: Google Gemini API (`@google/genai`)
-*   **PDF Generation**: `jspdf`, `jspdf-autotable`
-*   **Icons**: Heroicons
-*   **State Management**: Custom Hooks & React Context
+```
+          [ Admin Panel / CRM Views / Reporting UI ]
+                               |
+                               v
+                     [ Domain Engine Core ]
+                               |
+        +----------------------+----------------------+
+        |                      |                      |
+        v                      v                      v
+[ Persistence Strategy ] [ Parsing Strategy ]  [ Export Strategy ]
+  - In-Memory Sandbox     - Standard CSV        - Professional PDF
+  - LocalStorage Cache    - Regional Semicolon  - Spreadsheet CSV
+  - Supabase Live Cloud   - Multicaixa OCR      - Structural JSON
+```
 
-## 📦 Installation
+---
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/your-org/moduluxe.git
-    cd moduluxe
-    ```
+## 🧠 Domain-Driven Subdomains & Strategy Contexts
 
-2.  **Install dependencies** (if using a local bundler like Vite/Next.js, though this project runs directly in browser-based environments via ES Modules):
-    ```bash
-    npm install
-    ```
+Our domain boundaries are mapped systematically to guarantee complete extensibility and client adaptability:
 
-3.  **Environment Configuration**:
-    Create a `.env` file (or configure your environment variables) with your Gemini API Key:
-    ```env
-    API_KEY=your_google_gemini_api_key
-    ```
+### 16. Persistence Subdomain (`core/domain/persistence`)
+Governed by the `IPersistenceStrategy` contract, the application isolates core entity states from raw network layers. The workspace can run in three different database profiles without any UI impact:
+*   **In-Memory Sandbox Strategy**: Stores all parameters inside transient JavaScript maps. Updates survive view changes but are wiped upon page refresh. Useful for zero-touch client validation.
+*   **Local Web Storage Strategy**: Default persistence profile. Encodes real estate entities safely into client-side browser storage, preserving state across sessions.
+*   **Supabase PostgreSQL Cloud Strategy**: Connects to live production databases. Translates local entity updates into secure relational commands over client-side REST APIs.
 
-4.  **Run the application**:
-    ```bash
-    npm run dev
-    ```
+### 2. Reconciliation & Parsing Subdomain (`core/domain/reconciliation`)
+Translates bank statements into standardised transactional lists using `IReconciliationStrategy`:
+*   **Standard CSV Parsing Strategy**: Interprets comma-delimited numeric records.
+*   **Regional Semicolon CSV Strategy**: Specially calibrated for Angolan and European banking systems (BAI, BFA, Millennium). Accurately translates regional Portuguese-style floating-point numbers (e.g., swapping dots and decimal commas).
+*   **Multicaixa Slip OCR Strategy**: Converts raw digital receipt OCR strings into standardized transaction nodes dynamically.
 
-## 🌍 Localization
+### 3. Reporting & Export Subdomain (`core/domain/reporting`)
+Standardizes document compiler routines through `IExportStrategy`, mapping financial data points into custom file types:
+*   **Professional PDF Strategy**: Renders high-fidelity, printable PDF tables.
+*   **Spreadsheet CSV Strategy**: Translates columns into standard UTF-8 CSV downloads.
+*   **Structured JSON Strategy**: Extracted into readable machine-schema formats.
 
-The app supports dynamic language switching via the `LanguageContext`.
-*   **pt-AO** (Português Angola) - *Default*
-*   **pt-BR** (Português Brasil)
-*   **en-US** (English)
-*   **es-MX** (Español)
+---
 
-## 🛡️ Security
+## 🔒 Lease Validation & Automation Guards
 
-*   **Input Validation**: Strict types and file validation (size/mime-type).
-*   **Audit Logs**: Tracks critical system actions.
-*   **Privacy**: PII is handled securely within the client context.
+Moduluxe implements automated protection policies directly within the contracts domain:
 
-## 📄 License
+### 🛡️ Real-Time Contract Overlap Guard
+When generating or modifying a lease inside `ContractForm`, the domain engine verifies overlapping reservation ranges. If a conflict occurs (i.e. another active or pending contract is already assigned to the same property during the selected dates), a visual overlapping alert card is displayed and the system prompts for explicit confirmation before committing.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### ⚡ 30-Day Lease Expiration Proactive Reminder Rule
+Configured under the Automations workspace, this event-driven handler constantly checks for leases concluding in exactly 30 days. When triggered, it logs a system notification and dispatches an automated reminder instruction to the property manager to coordinate renewal opportunities.
+
+---
+
+## 🚀 Technical Directory Roadmap
+
+```
+├── core/
+│   ├── domain/               <-- Absolute Domain Separation Layer
+│   │   ├── persistence/      <-- Database Strategy Implementations
+│   │   ├── reconciliation/   <-- Statement Parsing Strategy Contexts
+│   │   └── reporting/        <-- Financial Document Strategy Registry
+│   ├── hooks/                <-- Rehydrated state handlers
+│   └── i18n/                 <-- Multi-regional Language Context
+├── modules/
+│   ├── automations/          <-- Rules engine & Expiry checkers
+│   └── bank-reconciliation/  <-- Transaction allocation boards
+```
+
+---
+
+## 📄 License & Compliance
+
+Licensed under the standard MIT License. Designed with enterprise-grade modular decoupling in compliance with the Clean Architecture paradigm.

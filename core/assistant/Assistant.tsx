@@ -31,6 +31,8 @@ const Assistant: React.FC<AssistantProps> = ({ appData, user }) => {
   useEffect(() => {
     if (appData && user) {
         chatSessionRef.current = createChatSession(appData, user);
+        // Reset messages if user changes to avoid leaking previous user's conversation context visually
+        setMessages([{ id: '1', text: `Hello ${user.name}! How can I help you today?`, sender: 'ai' }]);
     }
   }, [appData, user]);
 

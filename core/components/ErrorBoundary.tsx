@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { ExclamationCircleIcon } from '../../components/ui/icons/Icons';
 
 interface Props {
@@ -10,22 +10,22 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
+class ErrorBoundary extends React.Component<Props, State> {
+  state: State = {
     hasError: false,
     error: null,
   };
 
-  public static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
     // In a real app, log to Sentry/LogRocket here
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-gray-50 dark:bg-gray-900 rounded-lg border border-red-100 dark:border-red-900/30">

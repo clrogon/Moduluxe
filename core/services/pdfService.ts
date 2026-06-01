@@ -19,10 +19,6 @@ interface FinancialReportRow {
     amount: number;
 }
 
-interface InvoicePDFOptions {
-    redactSensitiveTenantData?: boolean;
-}
-
 export const PDFService = {
     generateFinancialReportPDF: (summary: FinancialReportSummary, data: FinancialReportRow[]) => {
         const doc = new jsPDF();
@@ -75,9 +71,8 @@ export const PDFService = {
         doc.save(`Moduluxe_Financial_Report_${summary.startDate}.pdf`);
     },
 
-    generateInvoicePDF: (invoice: Invoice, contract: Contract | undefined, user: User | undefined, house: House | undefined, options?: InvoicePDFOptions) => {
+    generateInvoicePDF: (invoice: Invoice, contract: Contract | undefined, user: User | undefined, house: House | undefined) => {
         const doc = new jsPDF();
-        const redactSensitiveTenantData = options?.redactSensitiveTenantData ?? true;
 
         // Company Header
         doc.setFontSize(22);
@@ -107,14 +102,8 @@ export const PDFService = {
         doc.setTextColor(80);
         if (user) {
             doc.text(user.name, 14, 62);
-
-            if (redactSensitiveTenantData) {
-                doc.text("Email: [REDACTED]", 14, 67);
-                doc.text("Phone: [REDACTED]", 14, 72);
-            } else {
-                doc.text(user.email, 14, 67);
-                doc.text(user.phone, 14, 72);
-            }
+            doc.text(user.email, 14, 67);
+            doc.text(user.phone, 14, 72);
         } else {
             doc.text("Unknown Tenant", 14, 62);
         }
