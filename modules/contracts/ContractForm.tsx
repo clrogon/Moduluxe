@@ -54,8 +54,23 @@ const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, cont
     return bookings.find(b => b.id === bookingId);
   }, [bookingId, bookings]);
 
+  const validationError = useMemo(() => {
+    if (!startDate || !endDate) {
+      return "Start Date and End Date are required fields.";
+    }
+    const sDate = new Date(startDate);
+    const eDate = new Date(endDate);
+    if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) {
+      return "Please input valid lease calendar dates.";
+    }
+    if (sDate > eDate) {
+      return "The Lease Start Date cannot occur after the End Date.";
+    }
+    return null;
+  }, [startDate, endDate]);
+
   const isOverlapping = useMemo(() => {
-    if (!selectedBooking || !startDate || !endDate) return null;
+    if (!selectedBooking || !startDate || !endDate || validationError) return null;
     const sDate = new Date(startDate);
     const eDate = new Date(endDate);
     if (isNaN(sDate.getTime()) || isNaN(eDate.getTime())) return null;
@@ -80,10 +95,14 @@ const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, cont
     });
 
     return conflicting;
-  }, [selectedBooking, startDate, endDate, contracts, bookings, initialData]);
+  }, [selectedBooking, startDate, endDate, contracts, bookings, initialData, validationError]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (validationError) {
+        alert(validationError);
+        return;
+    }
     if (!selectedBooking) {
         alert("Please select a valid booking.");
         return;
@@ -118,6 +137,18 @@ const ContractForm: React.FC<ContractFormProps> = ({ initialData, bookings, cont
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {validationError && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border-l-4 border-yellow-500 p-4 rounded-r-lg space-y-1 shadow-sm">
+          <div className="flex items-center text-yellow-800 dark:text-yellow-200 font-bold text-sm">
+            <ExclamationCircleIcon className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0" />
+            <span>Invalid Lease Dates</span>
+          </div>
+          <p className="text-xs text-yellow-700 dark:text-yellow-300 leading-relaxed">
+            {validationError}
+          </p>
+        </div>
+      )}
+
       {isOverlapping && (
         <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 p-4 rounded-r-lg space-y-1 shadow-sm">
           <div className="flex items-center text-red-800 dark:text-red-200 font-bold text-sm">

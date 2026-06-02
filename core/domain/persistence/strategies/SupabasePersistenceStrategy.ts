@@ -1,5 +1,67 @@
 import { IPersistenceStrategy } from '../IPersistenceStrategy';
 import { supabase } from '../../../lib/supabaseClient';
+import { House, User, Booking, Contract, Payment, MaintenanceRequest } from '../../../../shared/types/index';
+
+/**
+ * Strong Type Definitions for Supabase Table Rows
+ */
+interface SupabaseHouseRow {
+    id: string;
+    address: string;
+    type: string;
+    rent: number;
+    status: string;
+    image_url: string;
+    amenities: string[];
+}
+
+interface SupabaseProfileRow {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    status: string;
+    type: string;
+}
+
+interface SupabaseBookingRow {
+    id: string;
+    house_id: string;
+    user_id: string;
+    start_date: string;
+    end_date: string;
+    status: string;
+    houses?: { address: string } | null;
+    profiles?: { name: string } | null;
+}
+
+interface SupabaseContractRow {
+    id: string;
+    booking_id: string;
+    start_date: string;
+    end_date: string;
+    status: string;
+}
+
+interface SupabasePaymentRow {
+    id: string;
+    contract_id: string;
+    amount: number;
+    due_date: string;
+    paid_date: string | null;
+    status: string;
+    transaction_id: string | null;
+}
+
+interface SupabaseMaintenanceRow {
+    id: string;
+    house_id: string;
+    description: string;
+    status: string;
+    priority: string;
+    reported_date: string;
+    houses?: { address: string } | null;
+}
 
 /**
  * Supabase Cloud Persistence Strategy
@@ -32,7 +94,9 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                     const { data, error } = await supabase.from('houses').select('*');
                     if (error) throw error;
                     if (!data || data.length === 0) return defaultItems;
-                    return data.map((h: any) => ({
+                    
+                    const rows = data as SupabaseHouseRow[];
+                    const mapped: House[] = rows.map(h => ({
                         id: h.id,
                         address: h.address,
                         type: h.type,
@@ -40,28 +104,34 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                         status: h.status,
                         imageUrl: h.image_url,
                         amenities: h.amenities
-                    })) as unknown as T[];
+                    }));
+                    return mapped as unknown as T[];
                 }
 
                 case 'users': {
                     const { data, error } = await supabase.from('profiles').select('*');
                     if (error) throw error;
                     if (!data || data.length === 0) return defaultItems;
-                    return data.map((p: any) => ({
+
+                    const rows = data as SupabaseProfileRow[];
+                    const mapped: User[] = rows.map(p => ({
                         id: p.id,
                         name: p.name,
                         email: p.email,
                         phone: p.phone,
                         status: p.status,
                         type: p.type
-                    })) as unknown as T[];
+                    }));
+                    return mapped as unknown as T[];
                 }
 
                 case 'bookings': {
                     const { data, error } = await supabase.from('bookings').select('*, houses(address), profiles(name)');
                     if (error) throw error;
                     if (!data || data.length === 0) return defaultItems;
-                    return data.map((b: any) => ({
+
+                    const rows = data as unknown as SupabaseBookingRow[];
+                    const mapped: Booking[] = rows.map(b => ({
                         id: b.id,
                         houseId: b.house_id,
                         userId: b.user_id,
@@ -70,14 +140,17 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                         status: b.status,
                         houseName: b.houses?.address || 'Unknown Address',
                         userName: b.profiles?.name || 'Unknown Tenant'
-                    })) as unknown as T[];
+                    }));
+                    return mapped as unknown as T[];
                 }
 
                 case 'contracts': {
                     const { data, error } = await supabase.from('contracts').select('*');
                     if (error) throw error;
                     if (!data || data.length === 0) return defaultItems;
-                    return data.map((c: any) => ({
+
+                    const rows = data as SupabaseContractRow[];
+                    const mapped: Contract[] = rows.map(c => ({
                         id: c.id,
                         bookingId: c.booking_id,
                         startDate: c.start_date,
@@ -85,14 +158,17 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                         status: c.status,
                         houseName: 'Live Contract Source',
                         userName: 'Tenant Profile'
-                    })) as unknown as T[];
+                    }));
+                    return mapped as unknown as T[];
                 }
 
                 case 'payments': {
                     const { data, error } = await supabase.from('payments').select('*');
                     if (error) throw error;
                     if (!data || data.length === 0) return defaultItems;
-                    return data.map((p: any) => ({
+
+                    const rows = data as SupabasePaymentRow[];
+                    const mapped: Payment[] = rows.map(p => ({
                         id: p.id,
                         contractId: p.contract_id,
                         amount: p.amount,
@@ -100,14 +176,17 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                         paidDate: p.paid_date,
                         status: p.status,
                         transactionId: p.transaction_id
-                    })) as unknown as T[];
+                    }));
+                    return mapped as unknown as T[];
                 }
 
                 case 'maintenance_requests': {
                     const { data, error } = await supabase.from('maintenance_requests').select('*, houses(address)');
                     if (error) throw error;
                     if (!data || data.length === 0) return defaultItems;
-                    return data.map((m: any) => ({
+
+                    const rows = data as unknown as SupabaseMaintenanceRow[];
+                    const mapped: MaintenanceRequest[] = rows.map(m => ({
                         id: m.id,
                         houseId: m.house_id,
                         houseName: m.houses?.address || 'Unknown House',
@@ -115,7 +194,8 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                         status: m.status,
                         priority: m.priority,
                         reportedDate: m.reported_date
-                    })) as unknown as T[];
+                    }));
+                    return mapped as unknown as T[];
                 }
 
                 default: {
@@ -139,7 +219,8 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
         try {
             switch (key) {
                 case 'houses': {
-                    const payload = (items as any[]).map(h => ({
+                    const houses = items as unknown as House[];
+                    const payload: SupabaseHouseRow[] = houses.map(h => ({
                         id: h.id,
                         address: h.address,
                         type: h.type,
@@ -154,7 +235,8 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                 }
 
                 case 'users': {
-                    const payload = (items as any[]).map(u => ({
+                    const users = items as unknown as User[];
+                    const payload: SupabaseProfileRow[] = users.map(u => ({
                         id: u.id,
                         name: u.name,
                         email: u.email,
@@ -168,7 +250,8 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                 }
 
                 case 'bookings': {
-                    const payload = (items as any[]).map(b => ({
+                    const bookings = items as unknown as Booking[];
+                    const payload: SupabaseBookingRow[] = bookings.map(b => ({
                         id: b.id,
                         house_id: b.houseId,
                         user_id: b.userId,
@@ -182,7 +265,8 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                 }
 
                 case 'contracts': {
-                    const payload = (items as any[]).map(c => ({
+                    const contracts = items as unknown as Contract[];
+                    const payload: SupabaseContractRow[] = contracts.map(c => ({
                         id: c.id,
                         booking_id: c.bookingId,
                         start_date: c.startDate,
@@ -195,7 +279,8 @@ export class SupabasePersistenceStrategy implements IPersistenceStrategy {
                 }
 
                 case 'payments': {
-                    const payload = (items as any[]).map(p => ({
+                    const payments = items as unknown as Payment[];
+                    const payload: SupabasePaymentRow[] = payments.map(p => ({
                         id: p.id,
                         contract_id: p.contractId,
                         amount: p.amount,
