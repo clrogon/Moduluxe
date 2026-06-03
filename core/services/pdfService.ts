@@ -3,6 +3,10 @@ import { Invoice, Contract, User, House } from '../../shared/types/index';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+interface InvoicePDFOptions {
+    redactSensitiveTenantData?: boolean;
+}
+
 interface FinancialReportSummary {
     totalRevenue: number;
     paymentCount: number;
@@ -71,7 +75,8 @@ export const PDFService = {
         doc.save(`Moduluxe_Financial_Report_${summary.startDate}.pdf`);
     },
 
-    generateInvoicePDF: (invoice: Invoice, contract: Contract | undefined, user: User | undefined, house: House | undefined) => {
+    generateInvoicePDF: (invoice: Invoice, contract: Contract | undefined, user: User | undefined, house: House | undefined, options: InvoicePDFOptions = {}) => {
+        const { redactSensitiveTenantData = false } = options;
         const doc = new jsPDF();
 
         // Company Header
@@ -102,8 +107,8 @@ export const PDFService = {
         doc.setTextColor(80);
         if (user) {
             doc.text(user.name, 14, 62);
-            doc.text(user.email, 14, 67);
-            doc.text(user.phone, 14, 72);
+            doc.text(redactSensitiveTenantData ? '[REDACTED]' : user.email, 14, 67);
+            doc.text(redactSensitiveTenantData ? '[REDACTED]' : user.phone, 14, 72);
         } else {
             doc.text("Unknown Tenant", 14, 62);
         }
