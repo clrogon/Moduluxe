@@ -1,18 +1,45 @@
 import React, { useState } from 'react';
 import { ShieldCheckIcon } from '../../components/ui/icons/Icons';
-
-const mockSessions = [
-    { id: 1, device: 'Chrome on macOS', location: 'Lisbon, Portugal', ip: '192.168.1.1', lastActivity: 'Active now' },
-    { id: 2, device: 'iPhone App', location: 'New York, USA', ip: '10.0.0.1', lastActivity: '2 hours ago' },
-    { id: 3, device: 'Safari on iPad', location: 'London, UK', ip: '172.16.0.1', lastActivity: '1 day ago' },
-];
+import { supabase } from '../../core/lib/supabaseClient';
 
 const PrivacySecuritySettings = () => {
-    const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
-    const handlePasswordSubmit = (e: React.FormEvent) => {
+    const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        alert('Password change functionality is for demonstration purposes.');
+        setPasswordMsg(null);
+
+        if (newPassword !== confirmPassword) {
+            setPasswordMsg({ type: 'error', text: 'New passwords do not match.' });
+            return;
+        }
+        if (newPassword.length < 8) {
+            setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters.' });
+            return;
+        }
+
+        if (!supabase) {
+            setPasswordMsg({ type: 'error', text: 'Authentication service unavailable.' });
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+            setPasswordMsg({ type: 'success', text: 'Password updated successfully.' });
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (err: any) {
+            setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password.' });
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     const formInputClasses = "mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
@@ -27,7 +54,7 @@ const PrivacySecuritySettings = () => {
                 </div>
                 <div>
                     <h3 className="text-xl leading-6 font-bold text-gray-900 dark:text-gray-100">Privacy & Security</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage your password, two-factor authentication, and active sessions.</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage your password and account security.</p>
                 </div>
             </div>
 
@@ -35,76 +62,52 @@ const PrivacySecuritySettings = () => {
             <div className="p-6">
                 <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Change Password</h4>
                 <form onSubmit={handlePasswordSubmit} className="mt-4 space-y-4 max-w-lg">
-                     <div>
-                        <label className={formLabelClasses}>Current Password</label>
-                        <input type="password" required className={formInputClasses} />
-                    </div>
-                     <div>
+                    <div>
                         <label className={formLabelClasses}>New Password</label>
-                        <input type="password" required className={formInputClasses} />
+                        <input
+                            type="password"
+                            required
+                            minLength={8}
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                            className={formInputClasses}
+                        />
                     </div>
-                     <div>
+                    <div>
                         <label className={formLabelClasses}>Confirm New Password</label>
-                        <input type="password" required className={formInputClasses} />
+                        <input
+                            type="password"
+                            required
+                            value={confirmPassword}
+                            onChange={e => setConfirmPassword(e.target.value)}
+                            className={formInputClasses}
+                        />
                     </div>
+                    {passwordMsg && (
+                        <p className={`text-sm ${passwordMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                            {passwordMsg.text}
+                        </p>
+                    )}
                     <div className="flex justify-end">
-                         <button type="submit" className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
-                            Update Password
+                        <button
+                            type="submit"
+                            disabled={isUpdating}
+                            className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                        >
+                            {isUpdating ? 'Updating…' : 'Update Password'}
                         </button>
                     </div>
                 </form>
             </div>
 
-            {/* Two-Factor Authentication */}
+            {/* Two-Factor Authentication — Coming Soon */}
             <div className="p-6">
-                 <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Two-Factor Authentication (2FA)</h4>
-                 <div className="mt-4 flex items-center justify-between max-w-lg">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Protect your account from unauthorized access.</p>
-                    <button
-                        onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
-                        className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                            twoFactorEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
-                        }`}
-                    >
-                        <span
-                            className={`inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${
-                                twoFactorEnabled ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                        />
-                    </button>
-                 </div>
-                 {twoFactorEnabled && (
-                     <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-600 max-w-lg">
-                         <p className="text-sm text-gray-800 dark:text-gray-200 font-medium">Setup Authenticator App</p>
-                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Scan the QR code with an app like Google Authenticator or Authy.</p>
-                         <div className="mt-2 h-24 w-24 bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">[QR Code]</div>
-                     </div>
-                 )}
-            </div>
-
-             {/* Active Sessions */}
-            <div className="p-6">
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Active Sessions</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">This is a list of devices that have logged into your account.</p>
-                <div className="mt-4 flow-root">
-                    <ul className="-my-4 divide-y divide-gray-200 dark:divide-gray-700">
-                        {mockSessions.map(session => (
-                            <li key={session.id} className="flex items-center justify-between py-4">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{session.device}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{session.location} ({session.ip}) - <span className={session.lastActivity === 'Active now' ? 'text-green-600 font-semibold' : ''}>{session.lastActivity}</span></p>
-                                </div>
-                                <button className="text-sm font-medium text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300">
-                                    Sign out
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <div className="mt-6 flex justify-end">
-                    <button className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
-                        Sign Out All Other Devices
-                    </button>
+                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Two-Factor Authentication (2FA)</h4>
+                <div className="mt-3 flex items-center space-x-3">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                        Coming Soon
+                    </span>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">TOTP-based two-factor authentication will be available in a future update.</p>
                 </div>
             </div>
         </div>

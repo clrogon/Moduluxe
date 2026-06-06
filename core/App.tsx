@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { AppView, User, AppearancePreferences, Lead } from '../shared/types/index';
 import { useMockData } from './hooks/useMockData';
+import { supabase } from './lib/supabaseClient';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Assistant from './assistant/Assistant';
@@ -93,6 +94,45 @@ const AppContent: React.FC = () => {
     monthlyRevenue, activityFeed,
     settings, addSetting, updateSetting, deleteSetting,
   } = useMockData(currentUser?.id);
+
+  // Restore Supabase session on page load and keep it synced
+  useEffect(() => {
+    if (!supabase) return;
+
+    const restoreSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && !currentUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          setCurrentUser({
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+            status: profile.status,
+            type: profile.type as User['type'],
+          });
+        }
+      }
+    };
+
+    restoreSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // Session silently refreshed — no action needed
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- SECURITY: Session Timeout Logic ---
   useEffect(() => {
@@ -297,7 +337,7 @@ const AppContent: React.FC = () => {
         currentView={view} 
         setView={setView} 
         currentUser={currentUser} 
-        onLogout={() => setCurrentUser(null)}
+        onLogout={() => { supabase?.auth.signOut(); setCurrentUser(null); }}
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
       />

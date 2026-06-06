@@ -18,11 +18,16 @@ export class PersistenceStrategyRegistry {
         this.register(new InMemorySandboxPersistenceStrategy());
         this.register(new SupabasePersistenceStrategy());
 
-        // Hydrate selected selection if saved in client storage preferences
         if (typeof window !== 'undefined') {
             const savedId = localStorage.getItem('moduluxe_active_persistence_strategy_id');
             if (savedId && this.strategies.has(savedId)) {
                 this.activeStrategyId = savedId;
+            } else {
+                // Auto-select Supabase when env vars are configured
+                const env = (import.meta as any).env || {};
+                if (env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY) {
+                    this.activeStrategyId = 'supabase';
+                }
             }
         }
     }

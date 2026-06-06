@@ -2,22 +2,61 @@ import React, { useState } from 'react';
 import { User } from '../../shared/types/index';
 import { SpinnerIcon } from '../../components/ui/icons/Icons';
 import { useTranslation } from '../i18n/LanguageContext';
+import { supabase } from '../lib/supabaseClient';
 
 interface LoginViewProps {
   onLogin: (user: User) => void;
 }
+
+const isDev = import.meta.env.DEV;
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingRole, setLoadingRole] = useState<User['type'] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) {
+      setError('Authentication service is not configured. Please use a demo login.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      if (!data.user) throw new Error('No user returned from authentication.');
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError || !profile) throw new Error('Could not load user profile. Contact your administrator.');
+
+      onLogin({
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        status: profile.status,
+        type: profile.type as User['type'],
+      });
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDemoLogin = (role: User['type']) => {
     setIsLoading(true);
     setLoadingRole(role);
-    // Simulate network request
     setTimeout(() => {
       const mockUser: User = {
         id: `u-${role.toLowerCase()}`,
@@ -32,7 +71,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       setLoadingRole(null);
     }, 800);
   };
-  
+
   const DemoButton: React.FC<{role: User['type']}> = ({role}) => (
     <button
         onClick={() => handleDemoLogin(role)}
@@ -64,7 +103,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div className="space-y-6">
+          <form onSubmit={handleEmailLogin} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 {t('login.emailLabel')}
@@ -103,40 +142,51 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               </div>
             </div>
 
+            {error && (
+              <div className="rounded-md bg-red-50 border border-red-200 p-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
             <div>
               <button
-                type="button"
-                disabled
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 opacity-50 cursor-not-allowed"
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
+                {isLoading && !loadingRole ? (
+                  <SpinnerIcon className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                ) : null}
                 {t('login.signInButton')}
               </button>
             </div>
-          </div>
+          </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  {t('login.demoSeparator')}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-3 gap-3">
-                <DemoButton role="Admin" />
-                <DemoButton role="Owner" />
-                <DemoButton role="Tenant" />
-            </div>
-            {isLoading && (
-                <div className="mt-4 text-center text-sm text-blue-600">
-                    {t('login.authenticating', { role: loadingRole })}
+          {isDev && (
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
                 </div>
-            )}
-          </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">
+                    {t('login.demoSeparator')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                  <DemoButton role="Admin" />
+                  <DemoButton role="Owner" />
+                  <DemoButton role="Tenant" />
+              </div>
+              {isLoading && loadingRole && (
+                  <div className="mt-4 text-center text-sm text-blue-600">
+                      {t('login.authenticating', { role: loadingRole })}
+                  </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
